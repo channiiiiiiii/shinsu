@@ -31,7 +31,7 @@ class Login(BaseModel):
 
 
 class Command(BaseModel):
-    action: Literal["feed","clean","sleep","train","pet","cure","refresh","dungeon",
+    action: Literal["feed","clean","sleep","train","pet","cure","refresh","rename","dungeon",
                     "reroll","lock","synthesize","equip_gem","equip_armor","equip_relic","buy","use"]
     request_id: UUID
     kind: Literal["relic","armor"] = "armor"
@@ -42,6 +42,7 @@ class Command(BaseModel):
     level: int = Field(default=1, ge=1, le=10)
     index: int = Field(default=0, ge=0, le=10000)
     item: str = Field(default="small_candy", max_length=80)
+    name: str = Field(default="", max_length=15)
 
 
 def create_app(path=None, accounts=None, secure=None):

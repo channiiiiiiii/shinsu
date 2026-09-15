@@ -47,6 +47,8 @@ def act(data, command):
         ok, message = care[name]()
     elif name == "refresh":
         message = "신수 상태를 확인했습니다."
+    elif name == "rename":
+        ok, message = pet.rename(command["name"])
     elif name == "dungeon":
         dungeon, tier = command["dungeon"], command["tier"]
         if dungeon not in DUNGEON_DATABASE or tier not in DUNGEON_DIFFICULTIES:

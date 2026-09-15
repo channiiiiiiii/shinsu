@@ -27,6 +27,8 @@ function render(){
   if(slug) portrait.src=`/assets/game-assets/species/${slug}/stage${stage}.webp`;
   portrait.onerror=()=>{portrait.hidden=true;};
   $('#pet-name').textContent=pet.name;
+  $('#rename-input').value=pet.name;
+  $('#rename-count').textContent=`${[...pet.name].length} / 15`;
   $('#pet-role').textContent=`${pet.species_name} · ${pet.role}`;
   $('#pet-level').textContent=`Lv.${pet.level} · 경험치 ${pet.exp} / ${pet.max_exp} · ${pet.coins.toLocaleString()} 골드`;
   $('#pet-state').textContent=pet.is_sleeping?'지금은 꿈속을 여행 중이에요.':pet.is_sick?'몸이 좋지 않아요. 치료가 필요해요.':'오늘은 어떤 모험을 해볼까요?';
@@ -58,6 +60,10 @@ async function action(data){
 }
 $('#login-form').addEventListener('submit',async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(event.target));try{await api('/api/login',data);event.target.code.value='';await enter();$('#notice').textContent='';}catch(error){$('#notice').textContent=error.message;}});
 $('#logout').addEventListener('click',async()=>{try{await api('/api/logout',{});showLogin();}catch(error){$('#notice').textContent=error.message;}});
+$('#rename-open').addEventListener('click',()=>{$('#rename-form').hidden=false;$('#rename-input').focus();$('#rename-input').select();});
+$('#rename-cancel').addEventListener('click',()=>{$('#rename-form').hidden=true;$('#rename-input').value=player.pet.name;});
+$('#rename-input').addEventListener('input',event=>{$('#rename-count').textContent=`${[...event.target.value].length} / 15`;});
+$('#rename-form').addEventListener('submit',event=>{event.preventDefault();action({action:'rename',name:$('#rename-input').value});});
 document.addEventListener('click',event=>{
   const tab=event.target.closest('[data-tab]');
   if(tab){document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b===tab)));document.querySelectorAll('.panel').forEach(p=>p.hidden=p.id!==`panel-${tab.dataset.tab}`);return;}

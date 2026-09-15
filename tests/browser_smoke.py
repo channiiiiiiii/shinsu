@@ -39,6 +39,10 @@ def main():
                 page.locator('#game').wait_for(state='visible')
                 expect(page.locator('#pet-art')).to_be_visible()
                 assert page.locator('#pet-art').evaluate('image => image.complete && image.naturalWidth > 0')
+                page.locator('#rename-open').click()
+                page.locator('#rename-input').fill('모바일 별이')
+                page.get_by_role('button',name='저장').click()
+                expect(page.locator('#pet-name')).to_have_text('모바일 별이')
                 page.locator('[data-tab="adventure"]').click()
                 page.locator('[data-action="dungeon"]').first.click()
                 expect(page.locator('#message')).to_contain_text('탐험 완료')
@@ -55,6 +59,7 @@ def main():
                 page.locator('#login-form input').fill('2'*32)
                 page.get_by_role('button',name='우리 신수 만나러 가기 →').click()
                 page.locator('#game').wait_for(state='visible')
+                expect(page.locator('#pet-name')).to_have_text('모바일 별이')
                 page.locator('[data-tab="bag"]').click()
                 assert '1,000G' in page.locator('#coins').inner_text()
                 assert page.locator('#gems [data-action="equip_gem"]').count()==0

@@ -38,6 +38,19 @@ def test_잘못된_코드와_사이트간_요청_차단(client):
     assert client.post('/api/login',json={'account':'player1','code':'1'*32}).status_code==403
 
 
+def test_신수_이름_변경_검증_및_영구저장(client):
+    login(client)
+    renamed=client.post('/api/actions',json={'action':'rename','request_id':str(uuid4()),'name':'  달빛이  '},headers=HEADERS)
+    assert renamed.status_code==200
+    assert renamed.json()['player']['pet']['name']=='달빛이'
+    assert renamed.json()['player']['pet']['is_custom_name'] is True
+    assert client.get('/api/me').json()['pet']['name']=='달빛이'
+    for name in ('   ','가'*16):
+        response=client.post('/api/actions',json={'action':'rename','request_id':str(uuid4()),'name':name},headers=HEADERS)
+        assert response.status_code in (409,422)
+        assert client.get('/api/me').json()['pet']['name']=='달빛이'
+
+
 def test_던전_보상과_중복_요청(client):
     login(client)
     before=client.get('/api/me').json()
