@@ -4,6 +4,13 @@ const grades = {normal:'일반',advanced:'고급',rare:'희귀',hero:'영웅',le
 const effectLabels={basic_dmg:'기본기 피해',unique_dmg:'고유기 피해',ultimate_dmg:'궁극기 피해',crit_dmg:'치명타 피해',boss_dmg:'보스 피해',first3_dmg:'첫 3턴 피해',high_hp_dmg:'HP 50% 이상 피해',low_hp_dmg:'HP 30% 이하 피해',spd_adv_dmg:'속도 우위 피해',lifesteal:'흡혈량',extra_hit:'추가타 확률',gold_gain:'골드 획득',train_exp:'훈련 경험치',happiness_gain:'행복 획득',dmg_red:'피해 감소',boss_dmg_red:'보스 피해 감소',low_hp_dmg_red:'저체력 피해 감소',first3_dmg_red:'첫 3턴 피해 감소',heal_bonus:'회복량',turn_regen:'턴 종료 회복',shield_bonus:'보호막 효과',crit_dmg_red:'치명타 피해 감소',half_dmg_chance:'피해 반감 확률',hunger_slow:'포만감 감소 완화',clean_slow:'청결 감소 완화',energy_save:'생활 에너지 절약'};
 const speciesAssets = {'호랑이':'tiger','사자':'lion','늑대':'wolf','드래곤':'dragon','불사조':'phoenix','현무':'turtle','구미호':'fox','그리핀':'griffin','기린':'kirin','바하무트':'bahamut'};
 const statColors={hp:'#155b3a',atk:'#d94841',def:'#3478c5',spd:'#7651b5',crit:'#d6a514'};
+const statNames={hp:'HP',atk:'ATK',def:'DEF',spd:'SPD',crit:'CRIT'};
+const gemNames={hp:'체력의 에메랄드',atk:'공격의 루비',def:'수호의 사파이어',spd:'신속의 자수정',crit:'치명의 토파즈'};
+function statIcon(kind,heart=false){
+  // SVG는 기기에 이모지 글꼴이 없어도 같은 모양으로 보인다.
+  const paths={hp:'M12 21 3 12C-3 4 7-1 12 6 17-1 27 4 21 12Z',atk:'m15 2 7 0 0 7-10 10-7-7Z M3 16l5 5 M2 22l4-4',def:'M12 2 22 6 20 15 12 22 4 15 2 6Z',spd:'M14 1 3 14h8l-1 9 11-14h-8Z',crit:'m12 1 3 7 7-4-4 8 5 4-8 1-3 6-3-7-8 2 5-7-4-6 8 3Z'};
+  return `<svg class="stat-icon icon-${heart?kind:kind==='hp'?'heart':kind}" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[heart?'hp':kind]}"/></svg>`;
+}
 let player, catalog, busy = false, pending = null;
 const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -36,8 +43,9 @@ function statPentagon(){
   const rings=[24,48,72].map(r=>`<polygon points="${[0,1,2,3,4].map(i=>point(i,r)).join(' ')}"/>`).join('');
   const shape=raw.map((v,i)=>point(i,24+48*v/peak)).join(' ');
   const axes=[0,1,2,3,4].map(i=>{const [x,y]=point(i,72).split(',');return `<line x1="100" y1="100" x2="${x}" y2="${y}"/>`;}).join('');
-  const gems=Object.entries(labels).map(([k,label])=>`<span class="stat-gem" style="--stat-color:${statColors[k]}"><b>${label}</b><strong>LV.${player.inventory.equipped_gems[k]||0}</strong><small>${s[k==='hp'?'max_hp':k].toLocaleString()}</small></span>`).join('');
-  return `<div class="stat-radar"><svg viewBox="0 0 200 200" role="img" aria-label="5대 전투 스탯 오각형"><g class="radar-grid">${rings}${axes}</g><polygon class="radar-value" points="${shape}"/></svg><div class="combat-power">전투력<strong>${s.combat_power.toLocaleString()}</strong></div></div><div class="stat-gems">${gems}</div>`;
+  const values=Object.entries(labels).map(([k,label])=>`<div class="stat-value" aria-label="${label}">${statIcon(k)}<span>${statNames[k]}</span><strong>${s[k==='hp'?'max_hp':k].toLocaleString()}</strong></div>`).join('');
+  const captions=Object.keys(labels).map((k,i)=>{const [x,y]=point(i,89).split(',');return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle">${statNames[k]}</text>`;}).join('');
+  return `<div class="combat-power">전투력 <strong>${s.combat_power.toLocaleString()}</strong></div><div class="stat-layout"><div class="stat-radar"><svg viewBox="0 0 220 210" role="img" aria-label="5대 전투 스탯 오각형"><g transform="translate(10 5)"><g class="radar-grid">${rings}${axes}</g><polygon class="radar-value" points="${shape}"/>${captions}</g></svg></div><div class="stat-values">${values}</div></div>`;
 }
 function render(){
   const pet=player.pet, inv=player.inventory;
@@ -62,7 +70,7 @@ function render(){
   for(const panel of ['adventure','raid']){let summary=$(`#${panel}-my-stats`);if(!summary){summary=document.createElement('div');summary.id=`${panel}-my-stats`;summary.className='battle-summary';$(`#panel-${panel} h2`).insertAdjacentElement('afterend',summary);}summary.innerHTML=battleSummary();}
   $('#coins').textContent=`보유 골드 ${pet.coins.toLocaleString()}G`;
   $('#equipment').innerHTML=`<p>장착 방어구: ${esc(inv.equipped_armor?.armor_id||'없음')} · 보물: ${esc(inv.equipped_relic?.species||'없음')}</p>`+inv.armors_inventory.map((a,i)=>`<div class="row"><span>${esc(a.armor_id)} +${a.level}</span>${button('장착','equip_armor',{index:i})}</div>`).join('')+inv.relics_inventory.map((a,i)=>`<div class="row"><span>${esc(a.species)} 보물 +${a.level}</span>${button('장착','equip_relic',{index:i})}</div>`).join('');
-  $('#gems').innerHTML=Object.entries(inv.gems).map(([gem,levels])=>`<section class="gem-group" style="--stat-color:${statColors[gem]}"><h4><span class="gem-level">LV.${inv.equipped_gems[gem]||0}</span>${labels[gem]} 보석</h4>`+Object.entries(levels).filter(([,n])=>n>0).map(([level,n])=>`<div class="row"><span><b>LV.${level}</b> · ${n}개</span>${button('장착','equip_gem',{gem,level})}${Number(level)<10?button('2개 합성','synthesize',{gem,level}):''}</div>`).join('')+`</section>`).join('');
+  $('#gems').innerHTML=Object.keys(labels).map(gem=>`<section class="gem-group"><h4>${statIcon(gem,true)}<span>${gemNames[gem]}</span><b aria-label="장착 보석 레벨">Lv.${inv.equipped_gems[gem]||0}</b></h4>`+Object.entries(inv.gems[gem]||{}).filter(([,n])=>n>0).map(([level,n])=>`<div class="row"><span><b>Lv.${level}</b> · ${n}개</span>${button('장착','equip_gem',{gem,level})}${Number(level)<10?button('2개 합성','synthesize',{gem,level}):''}</div>`).join('')+`</section>`).join('');
   $('#items').innerHTML=Object.entries(inv.items).filter(([,n])=>n>0).map(([item,n])=>`<div class="row"><span>${esc(catalog.items[item]?.name||item)} × ${n}</span>${catalog.items[item]?.exp || ['holy_water','primordial_heart'].includes(item)?button('사용','use',{item}):''}</div>`).join('');
   $('#engravings').innerHTML=['relic','armor'].map(kind=>`<h3>${kind==='relic'?'보물':'방어구'}</h3>`+inv[`${kind}_engravings`].map((row,slot)=>`<div class="row"><span>${row?esc(`${grades[row.grade]} · ${labels[row.option]||effectLabels[row.option]||row.option} +${row.value}${labels[row.option]?'':'%'}`):'빈 슬롯'}</span>${button(inv[`${kind}_engraving_locks`][slot]?'잠금 해제':'잠금','lock',{kind,slot})}${button('재설정','reroll',{kind,slot})}</div>`).join('')).join('');
   $('#growth-gate').textContent=player.level_cap[1];

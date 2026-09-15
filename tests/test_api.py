@@ -41,7 +41,7 @@ def test_전투_스탯_UI_정적_자원(client):
     assert 'statPentagon' in script
     assert '입장 레벨 Lv.' in script
     assert "hp:'#155b3a'" in script
-    assert '.stat-gem' in style
+    assert '.stat-layout' in style
 
 
 def test_잘못된_코드와_사이트간_요청_차단(client):

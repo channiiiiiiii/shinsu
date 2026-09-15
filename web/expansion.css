@@ -8,11 +8,24 @@ nav{flex-wrap:wrap}
 #growth-skills .tile,#shop-items .tile{min-width:0;overflow-wrap:anywhere}
 @media(max-width:600px){nav{gap:4px}nav button{padding:10px;font-size:13px}#panel-forge .actions{grid-template-columns:1fr}}
 
-/* 5대 전투 스탯은 오각형과 보석 색상을 같은 언어로 사용한다. */
-.stats{display:grid;grid-template-columns:minmax(230px,340px) 1fr;align-items:center;gap:22px}
-.stat-radar{position:relative}.stat-radar svg{display:block;width:100%;max-height:310px}.radar-grid{fill:none;stroke:#cbd7cd;stroke-width:1}.radar-value{fill:#3d756b55;stroke:#245b50;stroke-width:3}
-.combat-power{position:absolute;inset:43% auto auto 50%;transform:translate(-50%,-50%);padding:7px 11px;border-radius:12px;background:#fffef8dd;text-align:center;font-size:11px}.combat-power strong{display:block;font-size:18px;color:#244f43}
-.stat-gems{display:grid;grid-template-columns:repeat(2,minmax(95px,1fr));gap:12px}.stat-gem{aspect-ratio:1;border-radius:50%;background:var(--stat-color);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-shadow:inset 0 -8px 18px #0002}.stat-gem b{font-size:12px}.stat-gem strong{font-size:21px}.stat-gem small{opacity:.85}.stat-gem:last-child{grid-column:1/-1;width:calc(50% - 6px);justify-self:center;color:#302800}
+/* 차트와 실제 수치를 나란히 표시한다. */
+#stats{display:block;padding:18px 12px;margin:20px 0;border:1px solid #d7ded0;border-radius:16px;background:#f6f8f0}
+#stats .combat-power{position:static;transform:none;padding:0 0 12px;background:none;text-align:left;font-size:15px}
+#stats .combat-power strong{display:inline;font-size:23px;margin-left:8px}
+.stat-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(110px,.6fr);align-items:center;gap:10px}
+.stat-radar svg{display:block;width:100%;max-height:330px}
+.radar-grid{fill:none;stroke:#cbd7cd;stroke-width:1}
+.radar-value{fill:#3d756b55;stroke:#245b50;stroke-width:2}
+.stat-radar text{font:9px system-ui;fill:#405c50}
+.stat-values{display:grid;gap:15px;min-width:0}
+.stat-value{display:grid;grid-template-columns:22px 39px minmax(0,1fr);align-items:center;gap:5px}
+#stats .stat-value span{font-size:12px;color:#52695e}
+#stats .stat-value strong{margin:0;font-size:16px;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.stat-icon{display:inline-block;width:21px;height:21px;flex-shrink:0;fill:currentColor;stroke:currentColor;stroke-width:1;stroke-linejoin:round}
+.icon-hp{color:#155b3a}.icon-heart,.icon-atk{color:#d94841}.icon-def{color:#3478c5}.icon-spd{color:#7651b5}.icon-crit{color:#d6a514}
+.stat-value .icon-spd{color:#c99610}.stat-value .icon-def{fill:none;stroke-width:2}
 .battle-summary{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:14px;margin:12px 0 18px;border-radius:14px;background:#edf2ea}.battle-summary strong{width:100%;color:#244f43}.battle-summary span{border-left:5px solid var(--stat-color,#789);padding:4px 8px;background:#fff;border-radius:7px;font-size:12px}
-.gem-group{border-left:5px solid var(--stat-color);padding-left:14px;margin:20px 0}.gem-group h4{display:flex;align-items:center;gap:10px}.gem-level{display:inline-grid;place-items:center;width:58px;height:58px;border-radius:50%;background:var(--stat-color);color:#fff;font-size:13px}.gem-group[style*="#d6a514"] .gem-level{color:#302800}
-@media(max-width:600px){.stats{grid-template-columns:1fr}.stat-radar{max-width:290px;margin:auto}.stat-gems{grid-template-columns:repeat(5,1fr);gap:5px}.stat-gem,.stat-gem:last-child{width:auto;grid-column:auto}.stat-gem b{font-size:9px}.stat-gem strong{font-size:13px}.stat-gem small{font-size:9px}}
+.gem-group{padding:12px 0;border-bottom:1px solid #dce3d5}
+.gem-group h4{display:flex;align-items:center;gap:9px;margin:0;font-size:14px}
+.gem-group h4 span{flex:1}.gem-group h4 b{font-variant-numeric:tabular-nums;white-space:nowrap}
+@media(max-width:360px){#stats{padding:12px 8px}.stat-layout{gap:5px;grid-template-columns:minmax(0,1fr) 110px}.stat-values{gap:12px}#stats .stat-value strong{font-size:14px}.stat-value{grid-template-columns:18px 34px minmax(0,1fr);gap:3px}.stat-icon{width:18px;height:18px}.gem-group h4{font-size:13px}}
