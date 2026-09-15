@@ -59,10 +59,16 @@ def main():
                 page.locator('#login-form input').fill('2'*32)
                 page.get_by_role('button',name='우리 신수 만나러 가기 →').click()
                 page.locator('#game').wait_for(state='visible')
-                expect(page.locator('#pet-name')).to_have_text('모바일 별이')
                 page.locator('[data-tab="bag"]').click()
                 assert '1,000G' in page.locator('#coins').inner_text()
                 assert page.locator('#gems [data-action="equip_gem"]').count()==0
+                page.locator('#logout').click()
+                page.locator('#login').wait_for(state='visible')
+                page.locator('select[name="account"]').select_option('player1')
+                page.locator('#login-form input').fill('1'*32)
+                page.get_by_role('button',name='우리 신수 만나러 가기 →').click()
+                page.locator('#game').wait_for(state='visible')
+                expect(page.locator('#pet-name')).to_have_text('모바일 별이')
                 assert not errors, errors
                 browser.close()
                 print('모바일 로그인·던전·보석 장착·로그아웃·두 계정 격리 검증 통과')
