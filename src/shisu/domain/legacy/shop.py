@@ -6,6 +6,7 @@
 
 import random
 from .farming import normalize_inventory
+from .enhancement_rules import RELIC_RATES, ARMOR_RATES, STAR_GOLD, CORES, relic_cost, armor_cost
 
 # 10대 종족 전용 보물 데이터베이스 (공식 명칭 및 +0 ~ +10 스탯 & +10 고유 효과)
 EXCLUSIVE_RELICS = {
@@ -337,17 +338,7 @@ class Inventory:
             return False, f"⚠️ 현재 레이드 성장 관문에서는 보물을 최대 **+{max_allowed_lvl}**까지만 강화할 수 있습니다! 다음 난이도 레이드를 올클리어하여 강화 상한을 해제하세요.", pet_coins
 
         # 단계별 재료 요구량 계산
-        req_stone = (cur_lvl + 1) * 2
-        req_ess = (cur_lvl + 1)
-        req_nc = 0
-        req_gold = (cur_lvl + 1) * 2500
-
-        if cur_lvl == 8: # +9 시도 (Nightmare 재료)
-            req_nc = 1
-            req_gold = 25000
-        elif cur_lvl == 9: # +10 시도 (Nightmare 재료)
-            req_nc = 2
-            req_gold = 35000
+        req_stone, req_ess, req_nc, req_gold = relic_cost(cur_lvl)
 
         cur_stone = self.items.get("stone", 0) + self.items.get("armor_stone", 0)
         # 종족 고유 정수 또는 범용 보물 정수 둘 다 사용 가능
@@ -390,13 +381,7 @@ class Inventory:
         new_coins = pet_coins - req_gold
 
         # v15.5 공식 성공률 테이블
-        rates = {
-            0: 1.00, 1: 1.00, 2: 1.00,
-            3: 0.90, 4: 0.80,
-            5: 0.70, 6: 0.60, 7: 0.50,
-            8: 0.35, 9: 0.20
-        }
-        success_rate = rates.get(cur_lvl, 0.20)
+        success_rate = RELIC_RATES[cur_lvl]
 
         if random.random() < success_rate:
             self.equipped_relic["level"] += 1
@@ -424,22 +409,7 @@ class Inventory:
                 return False, f"⚠️ [{a_name}]은(는) 최대 **+{max_enh}**까지만 강화할 수 있습니다! 상위 난이도 레이드에서 더 높은 등급의 방어구를 획득하세요.", pet_coins
 
         # 강화 단계별 소모 재료 및 비용
-        req_stone = cur_lvl + 1
-        req_essence = max(1, (cur_lvl + 1) // 2)
-        req_gold = (cur_lvl + 1) * 1500
-        req_nc = 0
-        req_mc = 0
-
-        if cur_lvl == 10:   # +11 시도
-            req_stone, req_essence, req_nc, req_gold = 12, 6, 1, 20000
-        elif cur_lvl == 11: # +12 시도
-            req_stone, req_essence, req_nc, req_gold = 15, 8, 2, 25000
-        elif cur_lvl == 12: # +13 시도
-            req_stone, req_essence, req_nc, req_gold = 18, 10, 3, 30000
-        elif cur_lvl == 13: # +14 시도
-            req_stone, req_essence, req_mc, req_gold = 22, 12, 2, 40000
-        elif cur_lvl == 14: # +15 시도
-            req_stone, req_essence, req_mc, req_gold = 25, 15, 4, 50000
+        req_stone, req_essence, req_nc, req_mc, req_gold = armor_cost(cur_lvl)
 
         # 재료 보유 체크 (stone 또는 armor_stone 사용 가능)
         stone_cnt = self.items.get("stone", 0) + self.items.get("armor_stone", 0)
@@ -475,12 +445,7 @@ class Inventory:
             self.remove_item("mythic_core", req_mc)
         new_coins = pet_coins - req_gold
 
-        rates = {
-            0: 1.00, 1: 1.00, 2: 1.00, 3: 0.95, 4: 0.90, 5: 0.85,
-            6: 0.75, 7: 0.65, 8: 0.55, 9: 0.45,
-            10: 0.35, 11: 0.25, 12: 0.18, 13: 0.12, 14: 0.08
-        }
-        success_rate = rates.get(cur_lvl, 0.08)
+        success_rate = ARMOR_RATES[cur_lvl]
 
         stars = self.equipped_armor.get("stars", 0)
         star_str = f" {'★' * stars}" if stars > 0 else ""
@@ -514,14 +479,10 @@ class Inventory:
             return False, "이미 방어구 고대 성급이 최고 단계(★5 MAX 완전 정복)입니다!", pet_coins
 
         # 성급별 골드 요구량
-        star_gold = {0: 30000, 1: 50000, 2: 70000, 3: 90000, 4: 120000}
-        req_gold = star_gold.get(cur_stars, 120000)
+        req_gold = STAR_GOLD[cur_stars]
 
         # 소모 가능한 고대 핵 목록 (보스별 전용 핵 5종 또는 범용 태고의 핵)
-        candidate_cores = [
-            "ancient_core_ent", "ancient_core_dragon", "ancient_core_ifrit",
-            "ancient_core_guardian", "ancient_core_omega", "ancient_core"
-        ]
+        candidate_cores = list(CORES)
         if specific_core and specific_core in candidate_cores:
             candidate_cores = [specific_core] + [c for c in candidate_cores if c != specific_core]
 

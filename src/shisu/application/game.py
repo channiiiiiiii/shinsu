@@ -6,6 +6,7 @@ from shisu.domain.legacy.shop import Inventory, ITEMS_DATABASE, Shop, EXCLUSIVE_
 from shisu.domain.legacy.adventure import AdventureSystem, DUNGEON_DATABASE, DUNGEON_DIFFICULTIES
 from shisu.domain.legacy import farming
 from shisu.domain.combat import battle, skills, effects, RAID_LEVELS, BOSS_DATABASE, RAID_DIFFICULTIES
+from shisu.application.enhancement import ACTIONS as ENHANCEMENTS, quote
 
 SAVE_VERSION = 2
 
@@ -32,7 +33,8 @@ def view(data, nickname):
     return {**data, "nickname": nickname, "stats": pet.get_battle_stats(inv),
             "max_energy": pet.max_energy, "max_stamina": pet.max_stamina,
             "bonus": farming.stat_bonus(inv), "server_time": time.time(),
-            "skills": skills(pet), "level_cap": pet.get_level_cap(), "relic_cap": pet.get_relic_max_level()}
+            "skills": skills(pet), "level_cap": pet.get_level_cap(), "relic_cap": pet.get_relic_max_level(),
+            "enhancements": {action: quote(pet, inv, action) for action in ENHANCEMENTS}}
 
 
 def act(data, command):
@@ -49,6 +51,7 @@ def act(data, command):
         pet.cleanliness += max(0, old_clean - pet.cleanliness) * fx.get("clean_slow", 0)
         data["last_tick"] += minutes * 60
     name = command["action"]
+    enhancement_before = quote(pet, inv, name) if name in ENHANCEMENTS else None
     ok, message = True, "저장했습니다."
     care = {"feed": pet.feed, "clean": pet.clean, "sleep": pet.sleep_toggle,
             "train": pet.train, "pet": pet.pet_animal, "cure": pet.cure}
@@ -149,6 +152,12 @@ def act(data, command):
         raise ValueError("지원하지 않는 행동입니다.")
     if not ok:
         raise ValueError(message)
+    if enhancement_before:
+        after = quote(pet, inv, name)
+        field = 'stars' if name == 'ascend_armor' else 'level'
+        data['last_enhancement'] = {**enhancement_before, 'success': after[field] > enhancement_before[field],
+                                    'result_level': after[field], 'message': message,
+                                    'after': {key: pet.get_battle_stats(inv)[key] for key in ('max_hp', 'atk', 'def', 'spd', 'crit')}}
     if pet.stage > old_stage:
         message += f"\n✨ {pet.stage}단계 진입! 스킬이 자동 강화되었습니다."
     data.update(pet=pet.to_dict(), inventory=inv.to_dict(), revision=data["revision"] + 1)

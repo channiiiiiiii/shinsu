@@ -36,7 +36,7 @@ async function loadSignupStatus(){
 }
 function showLogin(){ $('#login').hidden=false; $('#game').hidden=true; $('#logout').hidden=true; player=null; pending=null; }
 function button(title,action,fields={}){return `<button data-action="${action}" ${Object.entries(fields).map(([k,v])=>`data-${k}="${esc(v)}"`).join(' ')}>${esc(title)}</button>`;}
-function battleSummary(){const s=player.stats;return `<strong>내 전투 정보 · CP ${s.combat_power.toLocaleString()}</strong><span>Lv.${player.pet.level}</span>${Object.entries(labels).map(([k,label])=>`<span style="--stat-color:${statColors[k]}">${label} ${s[k==='hp'?'max_hp':k].toLocaleString()}</span>`).join('')}`;}
+function battleSummary(){const s=player.stats;return `<h3>내 전투 정보</h3><div class="battle-top"><strong>CP ${s.combat_power.toLocaleString()}</strong><small>Lv.${player.pet.level}</small></div><div class="battle-values">${Object.entries(labels).map(([k,label])=>`<div>${statIcon(k)}<span>${label}</span><b>${s[k==='hp'?'max_hp':k].toLocaleString()}</b></div>`).join('')}</div>`;}
 function statPentagon(){
   const s=player.stats, raw=[s.max_hp/4,s.atk,s.def,s.spd,s.crit], peak=Math.max(...raw,1);
   const point=(i,r)=>{const a=-Math.PI/2+i*Math.PI*2/5;return `${100+Math.cos(a)*r},${100+Math.sin(a)*r}`;};
@@ -75,7 +75,8 @@ function render(){
   $('#engravings').innerHTML=['relic','armor'].map(kind=>`<h3>${kind==='relic'?'보물':'방어구'}</h3>`+inv[`${kind}_engravings`].map((row,slot)=>`<div class="row"><span>${row?esc(`${grades[row.grade]} · ${labels[row.option]||effectLabels[row.option]||row.option} +${row.value}${labels[row.option]?'':'%'}`):'빈 슬롯'}</span>${button(inv[`${kind}_engraving_locks`][slot]?'잠금 해제':'잠금','lock',{kind,slot})}${button('재설정','reroll',{kind,slot})}</div>`).join('')).join('');
   $('#growth-gate').textContent=player.level_cap[1];
   $('#growth-skills').innerHTML=Object.values(player.skills).map(s=>`<div class="tile"><h3>${esc(s.name)}</h3><p>${esc(s.desc)}</p></div>`).join('');
-  $('#potential-stats').innerHTML=Object.entries(labels).map(([gem,label])=>{const step=Math.round((pet.potential_growth[gem]||0)/0.03);return `<div class="row"><span>${label} +${Math.round((pet.potential_growth[gem]||0)*100)}%${step<20?` · ${['일반','고급','전설','신화'][Math.floor(step/5)]} 혼 ${[1,4,9,16,25][step%5]}개 필요`:''}</span>${step<20?button('잠재 +3%','potential',{gem}):'최대 성장'}</div>`;}).join('');
+  renderPotential();
+  renderForge();
   $('#forge-summary').textContent=`보물 강화 상한 +${player.relic_cap} · 장착 보물 +${inv.equipped_relic?.level||0} · 방어구 +${inv.equipped_armor?.level||0} / ★${inv.equipped_armor?.stars||0} · 종족 정수 ${inv.species_essences?.[pet.species_key]||0}개`;
   $('#dismantle-list').innerHTML=inv.relics_inventory.map((r,index)=>`<div class="row"><span>${esc(r.species)} 보물 +${r.level}</span>${button('분해','dismantle_relic',{index})}</div>`).join('');
   $('#shop-items').innerHTML=Object.entries(catalog.items).filter(([,item])=>item.price>0).map(([item,value])=>`<div class="tile"><h3>${esc(value.name)}</h3><p>${esc(value.desc)}</p>${button(`${value.price.toLocaleString()}G · 1개 구매`,'buy',{item})}</div>`).join('');
@@ -108,9 +109,22 @@ async function action(data){
   if(pending && pending.signature!==signature){busy=false;$('#notice').textContent='이전 요청 결과를 확인하지 못했어요. 같은 행동을 다시 눌러 확인해 주세요.';return;}
   pending ||= {signature,body:{...data,request_id:crypto.randomUUID()}};
   document.querySelectorAll('button').forEach(b=>b.disabled=true);
-  try{const result=await api('/api/actions',pending.body);player=result.player;pending=null;render();$('#message').textContent=result.message;if(data.action.startsWith('raid'))await loadRooms();}
-  catch(error){if(error.status && error.status<500)pending=null;$('#notice').textContent=error.message;}
-  finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}
+  const forge=forgeActions.includes(data.action),animation=forge?forgeAnimation(data.action):null;
+  try{
+    const request=api('/api/actions',pending.body);
+    const [result]=await Promise.all([request,animation?.promise]);
+    animation?.stop();player=result.player;pending=null;
+    if(forge)showForgeResult(data.action,player.last_enhancement);
+    render();$('#message').textContent=result.message;
+    if(data.action.startsWith('raid'))await loadRooms();
+  }
+  catch(error){
+    animation?.stop();
+    if(error.status && error.status<500)pending=null;
+    if(forge&&player){forgeMessages[data.action]=`<p class="forge-error">${esc(error.message)}${pending?' · 같은 버튼으로 결과를 다시 확인해 주세요.':''}</p>`;renderForge();}
+    else $('#notice').textContent=error.message;
+  }
+  finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=b.dataset.blocked==='true');}
 }
 $('#login-form').addEventListener('submit',async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(event.target));try{await api('/api/login',data);event.target.code.value='';await enter();$('#notice').textContent='';}catch(error){$('#notice').textContent=error.message;}});
 $('#signup-open').addEventListener('click',()=>{$('#login-form').hidden=true;$('#signup-open').hidden=true;$('#signup-form').hidden=false;$('#signup-form').nickname.focus();});
