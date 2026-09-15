@@ -35,6 +35,15 @@ def test_로그인_필수와_타인_주소_차단(client):
     assert client.get('/api/me').status_code==401
 
 
+def test_전투_스탯_UI_정적_자원(client):
+    script=client.get('/assets/app.js').text
+    style=client.get('/assets/expansion.css').text
+    assert 'statPentagon' in script
+    assert '입장 레벨 Lv.' in script
+    assert "hp:'#155b3a'" in script
+    assert '.stat-gem' in style
+
+
 def test_잘못된_코드와_사이트간_요청_차단(client):
     assert client.post('/api/login',json={'account':'player1','code':'wrong'},headers=HEADERS).status_code==401
     assert client.post('/api/login',json={'account':'player1','code':'1'*32}).status_code==403
