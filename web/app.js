@@ -43,6 +43,9 @@ function render(){
   $('#pet-role').textContent=`${pet.species_name} · ${pet.role}`;
   $('#pet-level').textContent=`Lv.${pet.level} · 경험치 ${pet.exp} / ${pet.max_exp} · ${pet.coins.toLocaleString()} 골드`;
   $('#pet-state').textContent=pet.is_sleeping?'지금은 꿈속을 여행 중이에요.':pet.is_sick?'몸이 좋지 않아요. 치료가 필요해요.':'오늘은 어떤 모험을 해볼까요?';
+  const rerollsUsed=Number(player.initial_rerolls_used)||0;
+  $('#initial-reroll').hidden=pet.level!==1||rerollsUsed>=3;
+  $('#initial-reroll').textContent=`🎲 초기 신수 무료 다시 뽑기 · ${3-rerollsUsed}회 남음`;
   $('#meters').innerHTML=[['포만감',pet.hunger,100],['청결',pet.cleanliness,100],['행복',pet.happiness,100],['건강',pet.health,100],['생활 에너지',pet.energy,player.max_energy],['모험 기력',pet.stamina,player.max_stamina]].map(([n,v,m])=>`<div class="meter"><label>${n}<span>${v}/${m}</span></label><progress aria-label="${n}" max="${m}" value="${v}"></progress></div>`).join('');
   $('#stats').innerHTML=Object.entries(labels).map(([k,label])=>`<span>${label}<strong>${player.stats[k==='hp'?'max_hp':k]}</strong>보석·각인 +${player.bonus[k]}</span>`).join('')+`<span>전투력<strong>${player.stats.combat_power}</strong></span>`;
   $('#coins').textContent=`보유 골드 ${pet.coins.toLocaleString()}G`;
@@ -106,6 +109,7 @@ document.addEventListener('click',event=>{
   if(tab){document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b===tab)));document.querySelectorAll('.panel').forEach(p=>p.hidden=p.id!==`panel-${tab.dataset.tab}`);return;}
   const target=event.target.closest('[data-action]');if(!target)return;
   const data={...target.dataset};for(const key of ['slot','level','index','dungeon','boss','tier','times'])if(key in data)data[key]=Number(data[key]);
+  if(data.action==='pet_reroll'&&!confirm('새 신수를 무료로 다시 뽑을까요? Lv.1에서 최대 3회 가능합니다.'))return;
   if(data.action==='dismantle_relic'&&!confirm('이 보물을 분해하고 종족 정수를 얻을까요?'))return;
   if(data.action==='dungeon')data.tier=Number($('#difficulty').value);
   if(data.action==='reroll')data.tier=Number($('#stone-tier').value);

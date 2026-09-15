@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from shisu.api.main import create_app
 from shisu.infrastructure.database import Database
-from shisu.application.game import act
+from shisu.application.game import act, new_save
 
 ACCOUNTS = {f"player{i}":{"name":f"테이머{i}","code":str(i)*32} for i in (1,2)}
 HEADERS = {"X-Shinsu-Client":"web"}
@@ -72,6 +72,25 @@ def test_신수_이름_변경_검증_및_영구저장(client):
         response=client.post('/api/actions',json={'action':'rename','request_id':str(uuid4()),'name':name},headers=HEADERS)
         assert response.status_code in (409,422)
         assert client.get('/api/me').json()['pet']['name']=='달빛이'
+
+
+def test_Lv1_초기_신수_리롤은_무료_3회만_가능(client):
+    login(client)
+    before=client.get('/api/me').json()
+    responses=[client.post('/api/actions',json={'action':'pet_reroll','request_id':str(uuid4())},headers=HEADERS) for _ in range(3)]
+    assert all(response.status_code==200 for response in responses)
+    after=responses[-1].json()['player']
+    assert after['initial_rerolls_used']==3
+    assert after['pet']['level']==1
+    assert after['pet']['coins']==before['pet']['coins']
+    assert after['inventory']['equipped_relic']=={'species':after['pet']['species_key'],'level':0}
+    retry=client.post('/api/actions',json={'action':'pet_reroll','request_id':str(uuid4())},headers=HEADERS)
+    assert retry.status_code==409
+    assert client.get('/api/me').json()['pet']==after['pet']
+    level_two=new_save()
+    level_two['pet']['level']=2
+    with pytest.raises(ValueError,match='Lv.1'):
+        act(level_two,{'action':'pet_reroll'})
 
 
 def test_던전_보상과_중복_요청(client):

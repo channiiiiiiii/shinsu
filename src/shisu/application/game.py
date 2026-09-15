@@ -12,13 +12,15 @@ SAVE_VERSION = 2
 
 def new_save():
     return {"save_version": SAVE_VERSION, "pet": Pet().to_dict(), "inventory": Inventory().to_dict(),
-            "last_tick": time.time(), "revision": 0}
+            "last_tick": time.time(), "revision": 0, "initial_rerolls_used": 0}
 
 
 def migrate(data):
     if data.get("save_version") != SAVE_VERSION:
         raise ValueError("저장 버전을 확인해 주세요. 자동 초기화하지 않습니다.")
-    return deepcopy(data)
+    migrated = deepcopy(data)
+    migrated.setdefault("initial_rerolls_used", 0)
+    return migrated
 
 
 def objects(data):
@@ -64,6 +66,19 @@ def act(data, command):
         message = "신수 상태를 확인했습니다."
     elif name == "rename":
         ok, message = pet.rename(command["name"])
+    elif name == "pet_reroll":
+        if pet.level != 1:
+            raise ValueError("초기 신수 다시 뽑기는 Lv.1에서만 가능합니다.")
+        if data["initial_rerolls_used"] >= 3:
+            raise ValueError("초기 신수 다시 뽑기 3회를 모두 사용했습니다.")
+        old_coins = pet.coins
+        pet = Pet()
+        pet.coins = old_coins
+        inv.equipped_relic = {"species": pet.species_key, "level": 0}
+        data["initial_rerolls_used"] += 1
+        # 잡지식: 서버에서 다시 뽑아야 새로고침 꼼수도 운명의 여신을 속이지 못해요.
+        remaining = 3 - data["initial_rerolls_used"]
+        message = f"새로운 운명의 알이 깨어났습니다! {pet.emoji} {pet.name} ({pet.species_name} · {pet.personality}) · 남은 다시 뽑기 {remaining}회"
     elif name == "dungeon":
         dungeon, tier = command["dungeon"], command["tier"]
         if dungeon not in DUNGEON_DATABASE or tier not in DUNGEON_DIFFICULTIES:
