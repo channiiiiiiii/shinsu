@@ -113,6 +113,12 @@ def create_app(path=None, accounts=None, secure=None):
             db.execute("SELECT 1")
         return {"status":"ok","version":__version__}
 
+    @app.get("/api/account-names")
+    def account_names():
+        # 접속 코드는 절대 반환하지 않고, 로그인 선택지에 표시할 이름만 공개한다.
+        configured = app.state.accounts
+        return {account: value.get("name", account) for account, value in configured.items()}
+
     @app.post("/api/login")
     def login(body: Login, response: Response):
         now = time.monotonic()

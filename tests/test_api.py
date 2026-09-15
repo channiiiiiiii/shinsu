@@ -23,6 +23,8 @@ def client(tmp_path):
 
 
 def test_로그인_필수와_타인_주소_차단(client):
+    names=client.get('/api/account-names')
+    assert names.json()=={'player1':'테이머1','player2':'테이머2'}
     assert client.get('/api/me').status_code == 401
     assert client.get('/api/players/player2').status_code == 404
     response=login(client)

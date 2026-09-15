@@ -16,6 +16,12 @@ async function api(path, body) {
   }
   return data;
 }
+async function loadAccountNames(){
+  try{
+    const names=await api('/api/account-names');
+    $('#account-select').innerHTML=Object.entries(names).map(([account,name])=>`<option value="${esc(account)}">${esc(name)}</option>`).join('');
+  }catch(error){/* 접속 전 이름 조회 실패 시 HTML 기본 이름으로 로그인한다. */}
+}
 function showLogin(){ $('#login').hidden=false; $('#game').hidden=true; $('#logout').hidden=true; player=null; pending=null; }
 function button(title,action,fields={}){return `<button data-action="${action}" ${Object.entries(fields).map(([k,v])=>`data-${k}="${esc(v)}"`).join(' ')}>${esc(title)}</button>`;}
 function render(){
@@ -100,6 +106,6 @@ document.addEventListener('click',event=>{
 });
 // 접속 코드는 저장하지 않고 세션 쿠키만 사용한다. 비밀은 비밀답게!
 if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(registrations=>Promise.all(registrations.filter(r=>r.scope.endsWith('/assets/')).map(r=>r.unregister()))).then(()=>navigator.serviceWorker.register('/sw.js')).catch(()=>{});}
-enter().catch(error=>{showLogin();if(error.status!==401)$('#notice').textContent=error.message;});
+loadAccountNames().finally(()=>enter().catch(error=>{showLogin();if(error.status!==401)$('#notice').textContent=error.message;}));
 // 두 사람만 접속하므로 짧은 상태 조회로 협동 결과를 함께 확인한다.
 setInterval(async()=>{if(!player||busy||document.hidden)return;try{const next=await api('/api/me');if(!busy&&player&&next.account===player.account&&next.revision>player.revision){player=next;render();$('#message').textContent=next.last_battle?.message||'상태가 갱신되었습니다.';}await loadRooms();}catch(error){if(error.status===401)showLogin();}},5000);
