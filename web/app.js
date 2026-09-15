@@ -22,6 +22,10 @@ async function loadAccountNames(){
     $('#account-select').innerHTML=Object.entries(names).map(([account,name])=>`<option value="${esc(account)}">${esc(name)}</option>`).join('');
   }catch(error){/* 접속 전 이름 조회 실패 시 HTML 기본 이름으로 로그인한다. */}
 }
+async function loadSignupStatus(){
+  try{const status=await api('/api/signup-status');$('#signup-open').hidden=!status.available;}
+  catch(error){$('#signup-open').hidden=true;}
+}
 function showLogin(){ $('#login').hidden=false; $('#game').hidden=true; $('#logout').hidden=true; player=null; pending=null; }
 function button(title,action,fields={}){return `<button data-action="${action}" ${Object.entries(fields).map(([k,v])=>`data-${k}="${esc(v)}"`).join(' ')}>${esc(title)}</button>`;}
 function render(){
@@ -86,6 +90,9 @@ async function action(data){
   finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}
 }
 $('#login-form').addEventListener('submit',async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(event.target));try{await api('/api/login',data);event.target.code.value='';await enter();$('#notice').textContent='';}catch(error){$('#notice').textContent=error.message;}});
+$('#signup-open').addEventListener('click',()=>{$('#login-form').hidden=true;$('#signup-open').hidden=true;$('#signup-form').hidden=false;$('#signup-form').nickname.focus();});
+$('#signup-cancel').addEventListener('click',()=>{$('#signup-form').hidden=true;$('#login-form').hidden=false;$('#signup-open').hidden=false;});
+$('#signup-form').addEventListener('submit',async event=>{event.preventDefault();const data=Object.fromEntries(new FormData(event.target));try{await api('/api/signup',data);event.target.reset();await loadAccountNames();await enter();$('#notice').textContent='';}catch(error){$('#notice').textContent=error.message;}});
 $('#logout').addEventListener('click',async()=>{try{await api('/api/logout',{});showLogin();}catch(error){$('#notice').textContent=error.message;}});
 $('#rename-open').addEventListener('click',()=>{$('#rename-form').hidden=false;$('#rename-input').focus();$('#rename-input').select();});
 $('#rename-cancel').addEventListener('click',()=>{$('#rename-form').hidden=true;$('#rename-input').value=player.pet.name;});
@@ -106,6 +113,6 @@ document.addEventListener('click',event=>{
 });
 // 접속 코드는 저장하지 않고 세션 쿠키만 사용한다. 비밀은 비밀답게!
 if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(registrations=>Promise.all(registrations.filter(r=>r.scope.endsWith('/assets/')).map(r=>r.unregister()))).then(()=>navigator.serviceWorker.register('/sw.js')).catch(()=>{});}
-loadAccountNames().finally(()=>enter().catch(error=>{showLogin();if(error.status!==401)$('#notice').textContent=error.message;}));
+Promise.all([loadAccountNames(),loadSignupStatus()]).finally(()=>enter().catch(error=>{showLogin();if(error.status!==401)$('#notice').textContent=error.message;}));
 // 두 사람만 접속하므로 짧은 상태 조회로 협동 결과를 함께 확인한다.
 setInterval(async()=>{if(!player||busy||document.hidden)return;try{const next=await api('/api/me');if(!busy&&player&&next.account===player.account&&next.revision>player.revision){player=next;render();$('#message').textContent=next.last_battle?.message||'상태가 갱신되었습니다.';}await loadRooms();}catch(error){if(error.status===401)showLogin();}},5000);

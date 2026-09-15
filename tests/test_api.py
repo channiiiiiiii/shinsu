@@ -40,6 +40,27 @@ def test_잘못된_코드와_사이트간_요청_차단(client):
     assert client.post('/api/login',json={'account':'player1','code':'1'*32}).status_code==403
 
 
+def test_두번째_테이머_한명만_초대_가입하고_비밀번호로_로그인(tmp_path):
+    path=tmp_path/'save.sqlite3'
+    signup={'nickname':'마왕요니 친구','password':'safe-password-123','invite_code':ACCOUNTS['player2']['code']}
+    with TestClient(create_app(path,ACCOUNTS,False)) as client:
+        assert client.get('/api/signup-status').json()=={'available':True}
+        wrong={**signup,'invite_code':'wrong'}
+        assert client.post('/api/signup',json=wrong,headers=HEADERS).status_code==401
+        response=client.post('/api/signup',json=signup,headers=HEADERS)
+        assert response.status_code==200
+        assert client.get('/api/me').json()['nickname']=='마왕요니 친구'
+        assert client.get('/api/account-names').json()['player2']=='마왕요니 친구'
+        assert client.post('/api/logout',headers=HEADERS).status_code==200
+        assert login(client,'player2').status_code==401
+        assert client.post('/api/login',json={'account':'player2','code':signup['password']},headers=HEADERS).status_code==200
+        assert client.post('/api/signup',json=signup,headers=HEADERS).status_code==409
+    with TestClient(create_app(path,ACCOUNTS,False)) as client:
+        assert client.get('/api/signup-status').json()=={'available':False}
+        assert client.post('/api/login',json={'account':'player2','code':signup['password']},headers=HEADERS).status_code==200
+        assert client.get('/api/me').json()['nickname']=='마왕요니 친구'
+
+
 def test_신수_이름_변경_검증_및_영구저장(client):
     login(client)
     renamed=client.post('/api/actions',json={'action':'rename','request_id':str(uuid4()),'name':'  달빛이  '},headers=HEADERS)

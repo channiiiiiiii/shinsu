@@ -1,6 +1,8 @@
 """두 사람의 저장·중복 요청·세션을 SQLite로 관리한다."""
 import hashlib
+import hmac
 import json
+import os
 import secrets
 import sqlite3
 import time
@@ -23,6 +25,10 @@ class Database:
                 CREATE TABLE IF NOT EXISTS raids (id TEXT PRIMARY KEY, host TEXT NOT NULL,
                     boss INTEGER NOT NULL, tier INTEGER NOT NULL, status TEXT NOT NULL,
                     created REAL NOT NULL, result TEXT);
+                CREATE TABLE IF NOT EXISTS registered_accounts (
+                    user_id TEXT PRIMARY KEY, nickname TEXT NOT NULL,
+                    password_salt BLOB NOT NULL, password_hash BLOB NOT NULL,
+                    created REAL NOT NULL);
             ''')
 
     @contextmanager
@@ -125,6 +131,38 @@ class Database:
     def logout(self, token):
         with self.connect() as db:
             db.execute("DELETE FROM sessions WHERE hash=?", (self.digest(token),))
+
+    @staticmethod
+    def password_hash(password, salt):
+        return hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 310_000)
+
+    def register(self, user, nickname, password):
+        salt = os.urandom(16)
+        password_hash = self.password_hash(password, salt)
+        try:
+            with self.connect() as db:
+                db.execute(
+                    "INSERT INTO registered_accounts VALUES (?,?,?,?,?)",
+                    (user, nickname, salt, password_hash, time.time()),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError("이미 가입이 완료된 계정입니다.") from exc
+
+    def registered_account(self, user):
+        with self.connect() as db:
+            return db.execute(
+                "SELECT nickname,password_salt,password_hash FROM registered_accounts WHERE user_id=?",
+                (user,),
+            ).fetchone()
+
+    def verify_password(self, user, password):
+        row = self.registered_account(user)
+        return bool(row and hmac.compare_digest(self.password_hash(password, row[1]), row[2]))
+
+    def registered_names(self):
+        with self.connect() as db:
+            rows = db.execute("SELECT user_id,nickname FROM registered_accounts").fetchall()
+        return dict(rows)
 
     def backup(self, path):
         with self.connect() as source:

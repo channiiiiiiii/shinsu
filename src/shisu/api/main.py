@@ -32,6 +32,12 @@ class Login(BaseModel):
     code: str = Field(min_length=1, max_length=256)
 
 
+class Signup(BaseModel):
+    nickname: str = Field(min_length=1, max_length=20)
+    password: str = Field(min_length=8, max_length=128)
+    invite_code: str = Field(min_length=1, max_length=256)
+
+
 class Command(BaseModel):
     action: Literal["feed","clean","sleep","train","pet","cure","refresh","rename","dungeon",
                     "reroll","lock","synthesize","equip_gem","equip_armor","equip_relic","buy","use",
@@ -117,7 +123,29 @@ def create_app(path=None, accounts=None, secure=None):
     def account_names():
         # 접속 코드는 절대 반환하지 않고, 로그인 선택지에 표시할 이름만 공개한다.
         configured = app.state.accounts
-        return {account: value.get("name", account) for account, value in configured.items()}
+        names = {account: value.get("name", account) for account, value in configured.items()}
+        names.update(app.state.db.registered_names())
+        return names
+
+    @app.get("/api/signup-status")
+    def signup_status():
+        return {"available": app.state.db.registered_account("player2") is None}
+
+    @app.post("/api/signup")
+    def signup(body: Signup, response: Response):
+        nickname = body.nickname.strip()
+        if not nickname:
+            raise HTTPException(422, "닉네임을 입력해 주세요.")
+        invite = app.state.accounts["player2"]["code"]
+        if not secrets.compare_digest(body.invite_code.encode(), invite.encode()):
+            raise HTTPException(401, "초대코드가 올바르지 않습니다.")
+        try:
+            app.state.db.register("player2", nickname, body.password)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        token = app.state.db.session("player2")
+        response.set_cookie("shinsu_session", token, httponly=True, secure=cookie_secure, samesite="strict", max_age=604800)
+        return {"nickname": nickname}
 
     @app.post("/api/login")
     def login(body: Login, response: Response):
@@ -129,11 +157,13 @@ def create_app(path=None, accounts=None, secure=None):
                 raise HTTPException(429,"잠시 기다린 후 로그인해 주세요.")
             attempts.append(now)
         account = app.state.accounts[body.account]
-        if not secrets.compare_digest(body.code.encode(), account["code"].encode()):
+        registered = app.state.db.registered_account(body.account)
+        valid = app.state.db.verify_password(body.account, body.code) if registered else secrets.compare_digest(body.code.encode(), account["code"].encode())
+        if not valid:
             raise HTTPException(401,"계정 또는 접속 코드를 확인해 주세요.")
         token = app.state.db.session(body.account)
         response.set_cookie("shinsu_session",token,httponly=True,secure=cookie_secure,samesite="strict",max_age=604800)
-        return {"nickname":account["name"]}
+        return {"nickname": registered[0] if registered else account["name"]}
 
     @app.post("/api/logout")
     def logout(request: Request, response: Response):
@@ -144,7 +174,8 @@ def create_app(path=None, accounts=None, secure=None):
     @app.get("/api/me")
     def me(request: Request):
         user = identity(request)
-        return {**view(app.state.db.get(user),app.state.accounts[user]["name"]), "account": user}
+        registered = app.state.db.registered_account(user)
+        return {**view(app.state.db.get(user),registered[0] if registered else app.state.accounts[user]["name"]), "account": user}
 
     @app.get("/api/raids")
     def raids(request: Request):
@@ -164,7 +195,9 @@ def create_app(path=None, accounts=None, secure=None):
             result = await run_in_threadpool(app.state.db.action,user,str(body.request_id),command)
         except ValueError as exc:
             raise HTTPException(409,str(exc)) from exc
-        return {"player":{**view(result["data"],app.state.accounts[user]["name"]), "account": user},"message":result["message"]}
+        registered = app.state.db.registered_account(user)
+        nickname = registered[0] if registered else app.state.accounts[user]["name"]
+        return {"player":{**view(result["data"],nickname), "account": user},"message":result["message"]}
 
     app.mount("/assets",StaticFiles(directory=ROOT / "web"),name="assets")
 
