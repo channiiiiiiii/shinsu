@@ -1,0 +1,22 @@
+# 이 설정은 유료 웹서비스와 영구 디스크를 생성한다. 비용 확인 후 적용한다.
+services:
+  - type: web
+    name: shinsu
+    runtime: python
+    plan: starter
+    buildCommand: pip install -e .
+    startCommand: uvicorn shisu.api.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/health
+    disk:
+      name: shinsu-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: SHISU_DB_PATH
+        value: /var/data/shinsu.sqlite3
+      - key: SHISU_COOKIE_SECURE
+        value: "true"
+      - key: SHISU_ACCOUNTS
+        sync: false

@@ -1,2 +1,1 @@
-{"name":"Shisu","short_name":"Shisu","start_url":"/","display":"standalone","background_color":"#070b17","theme_color":"#111827","lang":"ko"}
-
+{"name":"신수 · 둘만의 작은 세계","short_name":"신수","start_url":"/","scope":"/","display":"standalone","background_color":"#f5f3eb","theme_color":"#244f43","lang":"ko","icons":[{"src":"/assets/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}

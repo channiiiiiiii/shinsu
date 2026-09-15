@@ -1,9 +1,4 @@
-const CACHE = "shisu-v0.1.0";
-const ASSETS = ["/", "/assets/styles.css", "/assets/app.js", "/assets/manifest.webmanifest"];
-self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS))));
-self.addEventListener("fetch", event => {
-  if (event.request.method === "GET" && !event.request.url.includes("/api/")) {
-    event.respondWith(caches.match(event.request).then(hit => hit || fetch(event.request)));
-  }
-});
-
+// 게임 요청은 캐시하지 않는다. 재접속 시 서버 저장이 유일한 기준이다.
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('shisu-')).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
+self.addEventListener('fetch',event=>{if(event.request.method==='GET')event.respondWith(fetch(event.request));});
