@@ -172,7 +172,7 @@ class Inventory:
         # 장착 슬롯 (종족 보물 1개, 방어구 1개)
         self.equipped_relic = None # {"species": "호랑이", "level": 0}
         self.equipped_armor = None # {"armor_id": "leather_armor", "level": 0, "opt": {"type": "def_pct", "val": 0.05}}
-        
+
         # 보유 장비 보관함
         self.relics_inventory = [] # list of {"species": "호랑이", "level": 0}
         self.armors_inventory = [] # list of {"armor_id": "mythic_dragon_armor", "level": 0, "opt": ...}
@@ -183,7 +183,7 @@ class Inventory:
         self.armor_engraving_locks = []
         self.gems = {}
         self.equipped_gems = {}
-        
+
         migration_map = {
             "ancient_god_armor": "mythic_celestial_armor",
             "dragon_scale_armor": "mythic_dragon_armor",
@@ -198,7 +198,7 @@ class Inventory:
             self.equipped_armor = data.get("equipped_armor", None)
             if self.equipped_armor and self.equipped_armor.get("armor_id") in migration_map:
                 self.equipped_armor["armor_id"] = migration_map[self.equipped_armor["armor_id"]]
-            
+
             raw_armors = data.get("armors_inventory", [])
             for a in raw_armors:
                 if isinstance(a, dict):
@@ -267,7 +267,7 @@ class Inventory:
             ]
             chosen = random.choice(opt_pool)
             opt = {"key": chosen[0], "name": chosen[1], "val": chosen[2]}
-        
+
         armor_item = {"armor_id": armor_id, "level": level, "stars": stars, "opt": opt}
         if not self.equipped_armor:
             self.equipped_armor = armor_item
@@ -308,7 +308,7 @@ class Inventory:
         req_essence = 50
         req_gold = 20000
         cur_ess = self.species_essences.get(species_key, 0)
-        
+
         if cur_ess < req_essence:
             return False, f"🚫 {species_key}의 정수가 부족합니다! (필요: {req_essence}개, 현재: {cur_ess}개)", pet_coins
         if pet_coins < req_gold:
@@ -325,17 +325,17 @@ class Inventory:
         # 잡지식: 종족 전용 보물은 Mythic(+10)에서 최종 완성과 함께 종족 고유 시그니처 특효가 개방돼용!
         if not self.equipped_relic:
             return False, "장착 중인 종족 전용 보물이 없습니다.", pet_coins
-        
+
         cur_lvl = self.equipped_relic.get("level", 0)
         sp = self.equipped_relic.get("species", "호랑이")
         r_name = EXCLUSIVE_RELICS.get(sp, {}).get("name", "전용 보물")
-        
+
         if cur_lvl >= 10:
             return False, f"이미 최고 강화 단계(+10)입니다! 👑 「{EXCLUSIVE_RELICS[sp]['special_10']}」", pet_coins
 
         if cur_lvl >= max_allowed_lvl:
             return False, f"⚠️ 현재 레이드 성장 관문에서는 보물을 최대 **+{max_allowed_lvl}**까지만 강화할 수 있습니다! 다음 난이도 레이드를 올클리어하여 강화 상한을 해제하세요.", pet_coins
-        
+
         # 단계별 재료 요구량 계산
         req_stone = (cur_lvl + 1) * 2
         req_ess = (cur_lvl + 1)
@@ -397,7 +397,7 @@ class Inventory:
             8: 0.35, 9: 0.20
         }
         success_rate = rates.get(cur_lvl, 0.20)
-        
+
         if random.random() < success_rate:
             self.equipped_relic["level"] += 1
             new_lvl = self.equipped_relic["level"]
@@ -571,7 +571,7 @@ class Shop:
         item_data = ITEMS_DATABASE.get(item_id)
         if not item_data:
             return False, "존재하지 않는 아이템입니다."
-        
+
         total_price = item_data["price"] * count
         if pet.coins < total_price:
             return False, f"💸 골드가 부족합니다! (필요: {total_price:,}G, 보유: {pet.coins:,}G)"
@@ -586,7 +586,7 @@ class Shop:
             return False, "보유하고 있지 않은 아이템입니다."
 
         item_data = ITEMS_DATABASE.get(item_id)
-        
+
         if "exp" in item_data:
             inventory.remove_item(item_id, 1)
             logs = pet.gain_exp(item_data["exp"])

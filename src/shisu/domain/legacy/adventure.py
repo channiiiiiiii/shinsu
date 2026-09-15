@@ -262,12 +262,12 @@ def calc_cp_deficit_penalty(player_cp: int, recommended_cp: int, diff_id: int) -
     """
     ratio = player_cp / max(1, recommended_cp)
     ratio_pct = int(ratio * 100)
-    
+
     dmg_p = 0.0
     inc_p = 0.0
     heal_p = 0.0
     name = "⚠️ 전투력 열세"
-    
+
     if diff_id == 1: # Normal: 페널티 없음
         return {
             "has_penalty": False,
@@ -325,14 +325,14 @@ def calc_cp_deficit_penalty(player_cp: int, recommended_cp: int, diff_id: int) -
             dmg_p = 0.05
 
     has_pen = (dmg_p > 0 or inc_p > 0 or heal_p > 0)
-    
+
     parts = []
     if dmg_p > 0: parts.append(f"⚔️ 피해 -{int(dmg_p*100)}%")
     if inc_p > 0: parts.append(f"💥 피격 +{int(inc_p*100)}%")
     if heal_p > 0: parts.append(f"💖 회복 -{int(heal_p*100)}%")
-    
+
     desc_str = " · ".join(parts) if parts else "✅ 전투력 보정 없음"
-    
+
     return {
         "has_penalty": has_pen,
         "ratio": ratio,
@@ -459,7 +459,7 @@ def choose_boss_action(boss_id: int, diff_id: int, hp_ratio: float, turn: int, c
     """
     b_skills = BOSS_SKILLS_DATABASE.get(boss_id, BOSS_SKILLS_DATABASE[1])
     ult_info = b_skills.get("ultimate", {})
-    
+
     # 1. 예고가 활성화되어 있던 상태라면 이번 턴 즉시 궁극기 발동!
     if warning_active:
         return "ultimate"
@@ -523,12 +523,12 @@ class AdventureSystem:
 
         boss_base = BOSS_DATABASE.get(boss_id, BOSS_DATABASE[1])
         diff_info = RAID_DIFFICULTIES.get(diff_id, RAID_DIFFICULTIES[1])
-        
+
         pet.consume_energy(boss_base["energy_cost"], "raid")
         pet.hunger = max(0, pet.hunger - 20)
         pet.cleanliness = max(0, pet.cleanliness - 20)
         pet.total_adventures = getattr(pet, "total_adventures", 0) + 1
-        
+
         # 👑 v17.2 정밀 보스 스탯 테이블 (Ground Truth)
         stat_data = BOSS_STAT_TABLE.get(diff_id, {}).get(boss_id, {})
         if stat_data:
@@ -548,7 +548,7 @@ class AdventureSystem:
 
         b_gold = int(boss_base["base_gold"] * diff_info["gold_mult"])
         b_exp = int(boss_base["base_exp"] * diff_info["exp_mult"])
-        
+
         boss_title = f"{boss_base['emoji']} {boss_base['name']} [{diff_info['name'].split()[0]}]"
         if diff_id == 5:
             boss_title = f"{boss_base['emoji']} {boss_base['title_ancient']}"
@@ -563,7 +563,7 @@ class AdventureSystem:
         effect = battle_stats.get("effect", "atk_boost")
         p_trait = battle_stats.get("personality_trait", "none")
         p_name = battle_stats.get("personality", "용맹함")
-        
+
         relic_is_10 = battle_stats.get("relic_is_10", False)
         armor_dmg_red = battle_stats.get("armor_dmg_red", 0.0)
         armor_resist = battle_stats.get("armor_resist", 0.0)
@@ -592,7 +592,7 @@ class AdventureSystem:
             print(f"⚔️ [레이드 전투 개시] {boss_title}")
             print(f"🔮 고유 절대 특성: 「{boss_base['trait_name']}」 | 🎯 {boss_base['check_stat']}")
             print(f"🐾 출전: {pet.name} (Lv.{pet.level} / 초월 Lv.{getattr(pet, 'transcend_level', 0)}) | 성격: [{p_name}]")
-            
+
             relic_str = f"{EXCLUSIVE_RELICS[sp_key]['name']} +{battle_stats.get('relic_level', 0)}" if battle_stats.get('relic_level', 0) > 0 else "미장착"
             armor_str = f"{ARMORS_DATABASE[inventory.equipped_armor['armor_id']]['name']} +{battle_stats.get('armor_level', 0)}" if inventory and inventory.equipped_armor else "미장착"
             print(f"🎴 보물: [{relic_str}] | 🛡️ 방어구: [{armor_str}]")
@@ -621,7 +621,7 @@ class AdventureSystem:
 
         while pet_hp > 0 and b_hp > 0:
             turn += 1
-            
+
             if buff_atk_turns > 0: buff_atk_turns -= 1
             else: buff_atk_val = 0.0
             if buff_def_turns > 0: buff_def_turns -= 1
@@ -632,7 +632,7 @@ class AdventureSystem:
             else: shield_buff_val = 0.0
             if reflect_buff_turns > 0: reflect_buff_turns -= 1
             else: reflect_buff_val = 0.0
-            
+
             if cd_unique > 0: cd_unique -= 1
             if cd_ultimate > 0: cd_ultimate -= 1
 
@@ -709,7 +709,7 @@ class AdventureSystem:
 
                 sk_info = pet_skills[skill_type]
                 sk_name = sk_info["name"]
-                
+
                 if skill_type == "unique":
                     if "buff_atk" in sk_info:
                         buff_atk_turns = sk_info["duration"]; buff_atk_val = sk_info["buff_atk"]
@@ -727,7 +727,7 @@ class AdventureSystem:
 
                 base_ratio = sk_info.get("atk_ratio", 1.0)
                 num_hits = sk_info.get("hits", 1)
-                
+
                 # 🐾 종족 전투 패시브 연동 (v13.9)
                 if sp_key == "호랑이" and (pet_hp / max(1, pet_max_hp)) >= 0.70:
                     base_ratio *= 1.06 # 🐯 맹수의 본능: HP 70%+ 피해 +6%
@@ -770,13 +770,13 @@ class AdventureSystem:
                 crit_bonus = sk_info.get("crit_bonus", 0.0)
                 base_crit_rate = pet_crit / (pet_crit + 900.0)
                 final_crit_rate = min(0.70, base_crit_rate + crit_bonus + (0.15 if effect == "crit" else 0.0))
-                
+
                 total_skill_dmg = 0
                 for hit_idx in range(num_hits):
                     is_crit = (random.random() < final_crit_rate)
                     crit_mult = 2.2 if (is_crit and p_trait == "calm_crit") else (2.0 if is_crit else 1.0)
                     hit_dmg = max(10, int((pet_atk * base_ratio / num_hits) * random.uniform(0.9, 1.15) * crit_mult))
-                    
+
                     # 🐯 호랑이 +10 백호살: 치명타 시 15% 확률 추가 공격
                     if sp_key == "호랑이" and relic_is_10 and is_crit and random.random() < 0.15:
                         hit_dmg = int(hit_dmg * 1.5)
@@ -855,7 +855,7 @@ class AdventureSystem:
                 cur_p_def = int(cur_p_def * 1.10) # 🦁 왕의 위엄: HP 50%- DEF +10%
 
             mob_dmg = max(5, int((b_atk * random.uniform(0.9, 1.1) - (cur_p_def * 0.35)) * base_shield))
-            
+
             extra_actions = 0
             if boss_id == 4:
                 if b_spd > cur_pet_spd:
@@ -914,25 +914,25 @@ class AdventureSystem:
         if pet_hp <= 0:
             if interactive:
                 print(f"\n😭 {pet.name}이(가) 패배하여 레이드에서 탈출했습니다...")
-            
+
             # 💀 난이도별 패배 페널티 & 치명상(Critical Injury) 시스템 (영구 사망 0% 완전 폐지)
             h_loss = 20 if sp_key == "사자" else 25
-            
+
             if diff_id == 1: # 🟢 Normal
                 pet.stamina = max(0, getattr(pet, "stamina", 100) - 20)
                 pet.happiness = max(10, pet.happiness - 5)
                 pet.health = max(10, pet.health - 10)
                 return False, f"[{boss_title}] 공략에 실패했습니다. (모험기력 -20, 행복도 -5)"
-                
+
             elif diff_id == 2: # 🔵 Hard
                 pet.stamina = 0
                 pet.health = max(10, pet.health - 20)
                 pet.happiness = max(10, pet.happiness - h_loss)
                 return False, f"[{boss_title}] 공략에 실패했습니다. (모험기력 0, 건강 -20, 행복도 -{h_loss})"
-                
+
             else: # 🟣 Nightmare (10%), 🟡 Mythic (25%), 🔴 Ancient (50%)
                 final_inj_rate, base_rate, aff_red, has_bond_retry = pet.calculate_injury_rate(diff_id)
-                
+
                 # 1. 💎 생명의 보석 체크
                 if inventory and inventory.items.get("life_gem", 0) > 0:
                     inventory.remove_item("life_gem", 1)
@@ -945,7 +945,7 @@ class AdventureSystem:
 
                 # 2. 치명상 판정
                 is_injured = (random.random() < final_inj_rate)
-                
+
                 # 3. 👑 Lv.10 절대적 유대 1회 기적 재판정
                 if is_injured and has_bond_retry:
                     if random.random() >= final_inj_rate:
@@ -990,7 +990,7 @@ class AdventureSystem:
         pet.coins += b_gold
         pet.total_dungeon_clears = getattr(pet, "total_dungeon_clears", 0) + 1
         exp_logs = pet.gain_exp(b_exp)
-        
+
         bonus_rewards = []
 
         # 🌱 v17.2 난이도별 잠재 혼 드랍 (엔트 25% 1개, 수정용 35% 1개, 이프리트 50% 1개, 가디언 50% 1~2개)
@@ -1031,7 +1031,7 @@ class AdventureSystem:
             inventory.add_item("ancient_candy", 1)
             inventory.add_item("armor_stone", 8)
             inventory.add_item("mythic_core", random.randint(1, 2))
-            
+
             # 👑 Mythic 보스별 신화 방어구 드롭 매핑 (25% 확률)
             mythic_boss_armors = {
                 1: "mythic_life_armor",       # 🌳 엔트 ➔ 생명의 성의
@@ -1049,7 +1049,7 @@ class AdventureSystem:
             inventory.add_item("ancient_candy", 3)
             inventory.add_item("armor_stone", 15)
             inventory.add_item("ancient_core", random.randint(1, 2))
-            
+
             # Ancient에서도 15% 확률로 신화 방어구 완제품 드롭
             all_mythic_ids = ["mythic_dragon_armor", "mythic_life_armor", "mythic_gale_armor", "mythic_abyss_armor", "mythic_celestial_armor"]
             if random.random() < 0.15:
@@ -1064,7 +1064,7 @@ class AdventureSystem:
             f"💰 획득: +{b_gold:,}G | ✨ EXP: +{b_exp:,} EXP\n"
             f"🎁 획득 보상: {', '.join(bonus_rewards)}"
         )
-        
+
         if interactive:
             print("\n" + "="*70)
             print(clear_msg)
@@ -1085,17 +1085,17 @@ class AdventureSystem:
 
         d_info = DUNGEON_DATABASE.get(dungeon_id, DUNGEON_DATABASE[1])
         diff_info = DUNGEON_DIFFICULTIES.get(diff_id, DUNGEON_DIFFICULTIES[1])
-        
+
         req_l = d_info["req_lvl"].get(diff_id, 1)
         if pet.level < req_l:
             return False, f"⚠️ 레벨이 부족합니다! [{d_info['emoji']} {d_info['name']} · {diff_info['name']}] 입장 필요 레벨: **Lv.{req_l}**"
-        
+
         # 난이도별 기력 계산 + 종족 무드 패시브 연동
         base_cost = int(d_info["energy_cost"] * diff_info["energy_mult"])
         cost_per_run = base_cost
         sp_key = getattr(pet, "species_key", "")
         aff_lvl, _, _ = pet.get_affection_state()
-        
+
         if sp_key == "늑대":
             w_disc = 0.15 if aff_lvl >= 8 else 0.10
             cost_per_run = max(1, int(cost_per_run * (1.0 - w_disc)))
@@ -1103,7 +1103,7 @@ class AdventureSystem:
             cost_per_run = max(1, int(cost_per_run * 0.90))
         elif sp_key == "구미호" and pet.happiness >= 80:
             cost_per_run = max(1, int(cost_per_run * 0.90))
-            
+
         cur_stam = getattr(pet, "stamina", 100)
         max_possible_runs = cur_stam // max(1, cost_per_run)
         actual_runs = min(times, max_possible_runs)
@@ -1205,7 +1205,7 @@ class AdventureSystem:
 
         item_summary = ", ".join(dropped_items) if dropped_items else "기본 재료 외 없음"
         env_msg = d_info["env_desc"].get(diff_id, "")
-        
+
         result_msg = (
             f"🏰 **[{d_info['emoji']} {d_info['name']} · {diff_info['name']}] {actual_runs}회 연속 고속 탐험 완료!**\n"
             f"🌐 **환경 효과:** _{env_msg}_\n"

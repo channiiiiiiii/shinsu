@@ -120,7 +120,7 @@ class Pet:
             self.role_desc = gene["role_desc"]
             self.effect = gene["effect"]
             self.is_shiny = gene["is_shiny"]
-            
+
             # 5대 개체값 (5V)
             self.hp_iv = gene["hp_iv"]
             self.atk_iv = gene["atk_iv"]
@@ -129,7 +129,7 @@ class Pet:
             self.crit_iv = gene["crit_iv"]
             self.total_iv = gene["total_iv"]
             self.rank = gene["rank"]
-            
+
             self.charm = gene["charm"]
             self.affection = 0
             self.total_affection = 0 # 💖 0~1000 누적 애정도 (Lv.1 0/100 시작)
@@ -140,11 +140,11 @@ class Pet:
             self.stage = 1
             self.exp = 0
             self.max_exp = self.calc_req_exp(1)
-            
+
             self.transcend_level = 0
             self.transcend_exp = 0
             self.has_relic = False # 호환성 플래그
-            
+
             self.hunger = 100
             self.cleanliness = 100
             self.happiness = 100
@@ -181,7 +181,7 @@ class Pet:
             return False, "⚠️ 신수의 이름은 공백일 수 없습니다!"
         if len(cleaned) > 15:
             return False, "⚠️ 신수의 이름은 최대 15자까지 가능합니다!"
-        
+
         old_name = self.name
         self.name = cleaned
         self.is_custom_name = True
@@ -194,7 +194,7 @@ class Pet:
 
         sp_data = SPECIES_DATABASE[new_sp_key]
         old_sp = getattr(self, "species_name", "신수")
-        
+
         self.species_key = new_sp_key
         self.species_name = sp_data.get("name", new_sp_key)
         self.emoji = sp_data.get("emoji", "🐾")
@@ -219,7 +219,7 @@ class Pet:
     def apply_preset(self, preset_name: str, inventory, meta: dict = None) -> tuple[bool, str]:
         """🛠️ 개발자 모드: 난이도별 MAX 프리셋 원클릭 세팅"""
         p_name = preset_name.lower().strip()
-        
+
         # 1. ⚪ 노말 MAX
         if p_name in ["normal", "normal_max", "노말", "노말max"]:
             self.level = 25
@@ -481,7 +481,7 @@ class Pet:
             return False, f"⚠️ 환생은 **Lv.99 만렙**에 도달한 신수만 진행할 수 있습니다! (현재: Lv.{self.level})"
 
         gene = Genetics.hatch_reincarnated_egg(self, keep_species=keep_species)
-        
+
         self.hp_iv = gene["hp_iv"]
         self.atk_iv = gene["atk_iv"]
         self.def_iv = gene["def_iv"]
@@ -490,7 +490,7 @@ class Pet:
         self.total_iv = gene["total_iv"]
         self.rank = gene["rank"]
         self.is_shiny = gene["is_shiny"]
-        
+
         self.generation = getattr(self, "generation", 1) + 1
         self.level = 1
         self.stage = 1
@@ -545,13 +545,13 @@ class Pet:
         """
         if diff_id in [1, 2]:
             return 0.0, 0.0, 0.0, False
-        
+
         base_rates = {3: 0.10, 4: 0.25, 5: 0.50}
         base_rate = base_rates.get(diff_id, 0.10)
-        
+
         lvl, _, _ = self.get_affection_state()
         aff_val = self.affection
-        
+
         aff_reduce = 0.0
         if aff_val >= 80:
             aff_reduce = 0.10
@@ -559,7 +559,7 @@ class Pet:
             aff_reduce = 0.05
         elif aff_val >= 40:
             aff_reduce = 0.02
-            
+
         final_rate = max(0.01, min(0.90, base_rate - aff_reduce - gear_resist))
         has_bond_retry = (aff_val >= 100 or lvl >= 10)
         return final_rate, base_rate, aff_reduce, has_bond_retry
@@ -582,19 +582,19 @@ class Pet:
     def gain_affection(self, amount: int) -> list[str]:
         """💖 애정도 획득 및 10단계 레벨업 연출 로그 (절대 감소하지 않음)"""
         old_lvl, _, _ = self.get_affection_state()
-        
+
         # Lv.5+ 친밀함 보너스: 애정 획득량 +5%
         if old_lvl >= 5:
             amount = max(1, int(amount * 1.05))
-            
+
         cur_tot = getattr(self, "total_affection", 0)
         new_tot = min(1000, cur_tot + amount)
         self.total_affection = new_tot
         self.affection = new_tot
-        
+
         new_lvl, new_prog, new_info = self.get_affection_state()
         logs = []
-        
+
         if new_lvl > old_lvl:
             if new_lvl == 10:
                 logs.append(f"👑✨ **[절대적 유대 달성!]** 애정도가 최고 단계인 **Lv.10 · 절대적 유대**에 도달했습니다! 「{new_info['quote']}」 💖")
@@ -613,7 +613,7 @@ class Pet:
         base_def = sp_data.get("base_def", 100)
         base_spd = sp_data.get("base_spd", 100)
         base_crit = sp_data.get("base_crit", 100)
-        
+
         # 🎭 10대 성격 보정값
         p_info = PERSONALITIES.get(getattr(self, "personality", "용맹함"), PERSONALITIES["용맹함"])
         p_stat = p_info.get("stat_mod", {})
@@ -659,7 +659,7 @@ class Pet:
         relic_hp = 0; relic_atk = 0; relic_def = 0; relic_spd = 0; relic_crit = 0
         relic_level = 0
         relic_is_10 = False
-        
+
         if inventory and inventory.equipped_relic and inventory.equipped_relic["species"] == self.species_key:
             relic_level = inventory.equipped_relic["level"]
             r_info = EXCLUSIVE_RELICS.get(self.species_key, {})
@@ -685,12 +685,12 @@ class Pet:
         armor_stars = 0
         armor_ancient_passive = None
         opt_def_pct = 0.0; opt_hp_pct = 0.0; opt_spd_pct = 0.0
-        
+
         if inventory and inventory.equipped_armor:
             a_data = ARMORS_DATABASE.get(inventory.equipped_armor["armor_id"], {})
             armor_level = inventory.equipped_armor.get("level", 0)
             armor_stars = inventory.equipped_armor.get("stars", 0)
-            
+
             # +0(1.0x) ~ +15(2.0x) 기본 강화 배율
             enhance_mult = 1.0 + (armor_level * (1.0 / 15.0))
             # ★1(+6%) ~ ★5(+30%) 고대 성급 배율
@@ -707,11 +707,11 @@ class Pet:
             heal_bonus = a_data.get("heal_bonus", 0.0)
             first_hit_bonus = a_data.get("first_hit_bonus", 0.0)
             low_hp_dmg_red = a_data.get("low_hp_dmg_red", 0.0)
-            
+
             # ★5 달성 시 고대 특효 해금
             if armor_stars >= 5:
                 armor_ancient_passive = a_data.get("ancient_passive", None)
-            
+
             if inventory.equipped_armor.get("opt"):
                 opt = inventory.equipped_armor["opt"]
                 if opt["key"] == "def_pct": opt_def_pct = opt["val"]
@@ -722,15 +722,15 @@ class Pet:
         aff_lvl, _, _ = self.get_affection_state()
         aff_bonus = 1.15 if aff_lvl >= 8 else 1.0
         trans_mult = 1.0 + (getattr(self, "transcend_level", 0) * 0.01)
-        
+
         hp_mult = 1.25 if "체력" in getattr(self, "role", "") else 1.0
         atk_mult = 1.20 if "공격" in getattr(self, "role", "") or "파괴" in getattr(self, "role", "") else 1.0
         def_mult = 1.25 if "방어" in getattr(self, "role", "") or "수호" in getattr(self, "role", "") else 1.0
         spd_mult = 1.20 if "스피드" in getattr(self, "role", "") else 1.0
         crit_mult = 1.20 if "치명" in getattr(self, "role", "") else 1.0
-        
+
         lvl_factor = 1 + (self.level * 0.08)
-        
+
         # 🧬 Palworld-style IV 잠재력 배율 (IV 0 = 1.0배, IV 100 = 1.30배)
         hp_iv_mult = 1.0 + (getattr(self, "hp_iv", 70) * 0.003)
         atk_iv_mult = 1.0 + (getattr(self, "atk_iv", 70) * 0.003)
@@ -763,14 +763,14 @@ class Pet:
         defence += farming_bonus["def"]
         spd += farming_bonus["spd"]
         crit += farming_bonus["crit"]
-        
+
         f_max_hp = max(100, max_hp)
         f_cur_hp = max(10, int(f_max_hp * (self.health / 100.0)))
         f_atk = max(10, atk)
         f_def = max(5, defence)
         f_spd = max(10, spd)
         f_crit = max(10, crit)
-        
+
         # ⚔️ v14.2 종합 전투력(Combat Power) 산출 (온전한 최대 스탯 기준)
         cp = calc_combat_power(f_max_hp, f_atk, f_def, f_spd, f_crit)
 
@@ -816,31 +816,31 @@ class Pet:
         - Mythic 올클리어 시: Lv.99 및 Ancient 고대 개방
         """
         clears = getattr(self, "raid_clears", {})
-        
+
         # 1. Normal 관문
         norm_clears = set(clears.get("1", []) + clears.get(1, []))
         if len(norm_clears) < 4:
             remain = 4 - len(norm_clears)
             return 35, f"⚪ 노말 레이드 4대 보스를 모두 토벌해야 Lv.36 이후로 성장할 수 있습니다! (잔여: {remain}마리)"
-            
+
         # 2. Hard 관문
         hard_clears = set(clears.get("2", []) + clears.get(2, []))
         if len(hard_clears) < 4:
             remain = 4 - len(hard_clears)
             return 55, f"🔵 하드 레이드 4대 보스를 모두 토벌해야 Lv.56 이후로 성장할 수 있습니다! (잔여: {remain}마리)"
-            
+
         # 3. Nightmare 관문
         night_clears = set(clears.get("3", []) + clears.get(3, []))
         if len(night_clears) < 4:
             remain = 4 - len(night_clears)
             return 75, f"🟣 악몽 레이드 4대 보스를 모두 토벌해야 Lv.76 이후로 성장할 수 있습니다! (잔여: {remain}마리)"
-            
+
         # 4. Mythic 관문
         myth_clears = set(clears.get("4", []) + clears.get(4, []))
         if len(myth_clears) < 4:
             remain = 4 - len(myth_clears)
             return 99, f"🟡 신화 레이드 4대 보스를 모두 토벌해야 Ancient 고대 영역에 진입할 수 있습니다! (잔여: {remain}마리)"
-            
+
         return 99, "🌌 최고 레벨 도달! Lv.99 이후에는 초월 성장이 가능합니다."
 
     def get_relic_max_level(self) -> int:
@@ -870,26 +870,26 @@ class Pet:
             self.raid_clears = {"1": [], "2": [], "3": [], "4": [], "5": []}
         if not hasattr(self, "boss_kills") or not isinstance(self.boss_kills, dict):
             self.boss_kills = {}
-            
+
         diff_str = str(diff_id)
         if diff_str not in self.raid_clears:
             self.raid_clears[diff_str] = []
-            
+
         is_first = False
         if boss_id not in self.raid_clears[diff_str]:
             self.raid_clears[diff_str].append(boss_id)
             is_first = True
-            
+
         kill_key = f"{diff_id}_{boss_id}"
         self.boss_kills[kill_key] = self.boss_kills.get(kill_key, 0) + 1
         total_kills = self.boss_kills[kill_key]
-        
+
         # 난이도 완파 체크
         if len(set(self.raid_clears[diff_str])) == 5 and is_first:
             diff_names = {1: "⚪ 노말", 2: "🔵 하드", 3: "🟣 악몽", 4: "🟡 신화", 5: "🌌 고대"}
             d_name = diff_names.get(diff_id, "레이드")
             logs.append(f"🎊👑🎉 **[{d_name} 레이드 완전 정복!]** 5대 보스를 모두 토벌하여 다음 단계의 레벨 상한 및 장비 강화 상한이 전격 해제되었습니다!")
-            
+
         return is_first, total_kills, logs
 
     def gain_exp(self, amount: int) -> list:
@@ -914,7 +914,7 @@ class Pet:
 
         # 🚪 v16.2 성장 관문 (레벨 소프트캡 검사)
         cap_lvl, cap_msg = self.get_level_cap()
-        
+
         if self.level >= cap_lvl:
             self.exp = min(self.max_exp, self.exp + amount)
             logs.append(f"✨ EXP +{amount:,} (현재 {self.exp:,}/{self.max_exp:,})")
@@ -923,13 +923,13 @@ class Pet:
 
         self.exp += amount
         logs.append(f"✨ EXP +{amount:,} (현재 {self.exp:,}/{self.max_exp:,})")
-        
+
         while self.exp >= self.max_exp and self.level < 99:
             # 다음 레벨이 캡을 넘는지 체크
             if self.level >= cap_lvl:
                 logs.append(f"⚠️ **[성장 관문 정지]** Lv.{cap_lvl} 상한에 도달했습니다! {cap_msg}")
                 break
-                
+
             self.exp -= self.max_exp
             self.level += 1
             self.max_exp = self.calc_req_exp(self.level)
@@ -938,7 +938,7 @@ class Pet:
             self.affection = min(100, self.affection + 3)
             self.charm = min(100, self.charm + 1)
             logs.append(f"🎉 LEVEL UP! [Lv.{self.level}] 달성! (+{bonus_coin:,}G, 애정도+3, 외모력+1)")
-            
+
             new_stage, new_title = Genetics.get_form_title(self.species_key, self.element, self.level, getattr(self, "is_shiny", False))
             if new_stage > self.stage:
                 self.stage = new_stage
@@ -1040,7 +1040,7 @@ class Pet:
         logs = []
         if elapsed_minutes < 0.1: return logs
         max_e = self.max_energy
-        
+
         if self.is_sleeping:
             recovered_energy = int(elapsed_minutes * 35)
             recovered_health = int(elapsed_minutes * 25)
@@ -1069,7 +1069,7 @@ class Pet:
 
         self.hunger = max(0, self.hunger - hunger_loss)
         self.cleanliness = max(0, self.cleanliness - clean_loss)
-        
+
         new_poops = int(elapsed_minutes // 40)
         if new_poops > 0:
             self.poops = min(5, self.poops + new_poops)
@@ -1079,17 +1079,17 @@ class Pet:
         if (self.cleanliness < 20 or self.hunger < 20 or self.poops >= 3) and not self.is_sick:
             self.is_sick = True
             logs.append("🤒 관리가 소홀하여 병에 걸렸습니다!")
-        
+
         if self.is_sick:
             self.health = max(10, self.health - int(elapsed_minutes * 0.3))
-        
+
         logs.append(f"⏳ 약 {elapsed_minutes:.1f}분 동안의 변화가 반영되었습니다. (생활 기력: {self.energy}%, 모험 기력: {self.stamina}%)")
         return logs
 
     def feed(self, food_type="normal") -> tuple[bool, str]:
         if self.is_sleeping: return False, "💤 수면 중에는 먹이를 먹을 수 없습니다."
         if self.hunger >= 100: return False, "😋 배가 가득 차서 더 이상 먹을 수 없습니다."
-        
+
         aff_logs = []
         if food_type == "normal":
             cost = 50
@@ -1157,11 +1157,11 @@ class Pet:
     def cure(self) -> tuple[bool, str]:
         if not self.is_sick and not getattr(self, "is_critically_injured", False) and self.health >= 100:
             return False, "💖 상처나 질병 없이 100% 건강한 상태입니다!"
-        
+
         cost = max(100, self.level * 100)
         if self.coins < cost:
             return False, f"💸 치료비가 부족합니다! ({cost:,}G 필요, 보유: {self.coins:,}G)"
-        
+
         self.coins -= cost
         self.is_sick = False
         self.is_critically_injured = False
@@ -1185,7 +1185,7 @@ class Pet:
         self.cleanliness = max(0, self.cleanliness - 15)
         self.happiness = min(100, self.happiness + 10)
         aff_logs = self.gain_affection(2)
-        
+
         g = random.randint(50, 150) + self.level * 20
         xp = random.randint(50, 120) + self.level * 15
 
@@ -1199,7 +1199,7 @@ class Pet:
 
         self.coins += g
         logs = self.gain_exp(xp)
-        
+
         msg = f"🏋️ 불타는 훈련 완료! (생활에너지 -{used_e}%, +{g:,}G, +{xp:,} EXP, 애정도 +2)\n" + " ".join(logs)
         if aff_logs: msg += "\n" + " ".join(aff_logs)
         return True, msg

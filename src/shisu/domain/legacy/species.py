@@ -259,17 +259,17 @@ class Genetics:
         r = random.random()
         cumulative = 0.0
         selected_species_key = "호랑이"
-        
+
         for sp_key, sp_data in SPECIES_DATABASE.items():
             cumulative += sp_data["gacha_prob"]
             if r <= cumulative:
                 selected_species_key = sp_key
                 break
-                
+
         sp_data = SPECIES_DATABASE[selected_species_key]
         element = random.choice(ELEMENT_MAP.get(selected_species_key, ["화염", "수호", "질풍", "암흑", "대지"]))
         passive = ELEMENT_PASSIVES.get(element, ELEMENT_PASSIVES["화염"])
-        
+
         # 5V 초기 개체값 (1세대 초기 신수: 총합 300 이하 제한, 개별 스탯 10 ~ 60)
         while True:
             hp_iv = random.randint(10, 60)
@@ -279,7 +279,7 @@ class Genetics:
             crit_iv = random.randint(10, 60)
             if hp_iv + atk_iv + def_iv + spd_iv + crit_iv <= 300:
                 break
-        
+
         # 2% 확률 히든 변이 (이로치)
         is_shiny = (random.random() < 0.02)
         if is_shiny:
@@ -288,7 +288,7 @@ class Genetics:
             def_iv = min(65, def_iv + 10)
             spd_iv = min(65, spd_iv + 10)
             crit_iv = min(65, crit_iv + 10)
-            
+
             # 샤이니 변이 적용 후에도 1세대 초기 IV 총합 300 이하 엄격 보장
             tot = hp_iv + atk_iv + def_iv + spd_iv + crit_iv
             if tot > 300:
@@ -338,7 +338,7 @@ class Genetics:
             charm = random.randint(60, 99)
             affection = random.randint(40, 60)
             personality_key = getattr(parent_pet, "personality", random.choice(list(PERSONALITIES.keys())))
-            
+
             egg_data = {
                 "species_key": selected_species_key,
                 "species_name": sp_data["name"],
@@ -355,7 +355,7 @@ class Genetics:
             }
         else:
             egg_data = Genetics.hatch_random_egg()
-        
+
         p_hp = getattr(parent_pet, "hp_iv", 70)
         p_atk = getattr(parent_pet, "atk_iv", 70)
         p_def = getattr(parent_pet, "def_iv", 70)
@@ -401,7 +401,7 @@ class Genetics:
     def get_form_title(species_key: str, element: str, level: int, is_shiny: bool = False) -> tuple[int, str]:
         sp_name = SPECIES_DATABASE.get(species_key, {}).get("name", species_key)
         shiny_tag = "✨ " if is_shiny else ""
-        
+
         if level >= 99:
             return 4, f"{shiny_tag}👑 태초의 전설 {element} {sp_name} 오메가"
         elif level >= 70:
