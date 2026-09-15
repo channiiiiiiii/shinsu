@@ -8,10 +8,42 @@ from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser(description="신수 로컬 서버와 백업")
-    parser.add_argument("command", choices=["run","backup"])
+    parser.add_argument("command", choices=["run","backup","export-save","import-save","cloud-backup","cloud-import"])
     parser.add_argument("--output")
+    parser.add_argument("--input")
+    parser.add_argument("--account", choices=["player1","player2"])
+    parser.add_argument("--legacy-id")
+    parser.add_argument("--replace", action="store_true")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
+    if args.command in ("export-save","import-save","cloud-backup","cloud-import"):
+        from shisu.infrastructure.database import Database
+        from shisu.infrastructure.transfer import import_save, cloud_backup, cloud_download
+        database = Database(os.getenv("SHISU_DB_PATH", str(root / "data/shinsu.sqlite3")))
+        try:
+            if args.command == "cloud-backup":
+                cloud_backup(database)
+            else:
+                if not args.account:
+                    parser.error("--account로 대상 계정을 지정하세요.")
+                if args.command == "export-save":
+                    if not args.output:
+                        parser.error("--output 경로가 필요합니다.")
+                    with Path(args.output).open("x", encoding="utf-8") as handle:
+                        json.dump(database.get(args.account), handle, ensure_ascii=False, indent=2)
+                else:
+                    if args.command == "cloud-import":
+                        raw = cloud_download(args.account, args.legacy_id)
+                    else:
+                        if not args.input:
+                            parser.error("--input 경로가 필요합니다.")
+                        raw = json.loads(Path(args.input).read_text(encoding="utf-8-sig"))
+                    backup = import_save(database,args.account,raw,args.replace)
+                    print(f"이전 저장 백업: {backup}")
+            print("세이브 작업을 완료했습니다.")
+        except (ValueError, OSError) as exc:
+            parser.error(str(exc))
+        return
     if args.command == "backup":
         from shisu.infrastructure.database import Database
         source = Path(os.getenv("SHISU_DB_PATH",str(root / "data/shinsu.sqlite3")))

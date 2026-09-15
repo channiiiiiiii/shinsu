@@ -404,6 +404,15 @@ DUNGEON_DIFFICULTIES = {
     3: {"name": "🔴 심연", "energy_mult": 1.2, "gold_mult": 1.8, "exp_mult": 1.5, "mat_mult": 2.0, "hidden_rate": 0.12}
 }
 
+# 기존 세 난이도 수치를 유지하고 상위 파밍 구간만 확장한다.
+DUNGEON_DIFFICULTIES.update({
+    4: {"name": "🟡 신화", "energy_mult": 1.3, "gold_mult": 2.2, "exp_mult": 1.8, "mat_mult": 2.5, "hidden_rate": 0.15},
+    5: {"name": "🌌 고대", "energy_mult": 1.4, "gold_mult": 2.6, "exp_mult": 2.1, "mat_mult": 3.0, "hidden_rate": 0.18},
+})
+for dungeon_info in DUNGEON_DATABASE.values():
+    dungeon_info["req_lvl"].update({4: 70, 5: 99})
+    dungeon_info["env_desc"].update({4: "신화 방어구 각인석과 Lv.4~5 보석", 5: "신화 방어구 각인석과 Lv.5~6 보석"})
+
 # 👑 5대 레이드 보스 전용 스킬 · 패턴 · Ancient 페이즈 데이터베이스 (v15.0)
 BOSS_SKILLS_DATABASE = {
     1: { # 🌳 고대 엔트

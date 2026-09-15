@@ -1,0 +1,9 @@
+/* 보스 카드도 작은 화면에서 한 칸씩 내려앉는다. */
+nav{flex-wrap:wrap}
+.boss-art{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:14px}
+#raid-bosses .tile button{margin:4px 4px 4px 0}
+#battle-log{max-height:420px;overflow:auto;font-family:inherit}
+#panel-growth form{display:grid;gap:12px;max-width:420px}
+#panel-forge .actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+#growth-skills .tile,#shop-items .tile{min-width:0;overflow-wrap:anywhere}
+@media(max-width:600px){nav{gap:4px}nav button{padding:10px;font-size:13px}#panel-forge .actions{grid-template-columns:1fr}}

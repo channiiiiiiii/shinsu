@@ -75,6 +75,7 @@ def roll_engraving(kind, tier, excluded=()):
         raise ValueError("No unique engraving option remains")
     grades, weights = GRADE_WEIGHTS[tier]
     grade = random.choices(grades, weights=weights, k=1)[0]
+    available = [key for key in available if values[key][GRADES.index(grade)] > 0]
     option = random.choice(available)
     return {"option": option, "grade": grade, "value": values[option][GRADES.index(grade)]}
 
@@ -135,7 +136,8 @@ def equip_gem(inv, gem_type, level):
 
 def stat_bonus(inv):
     result = {key: 0 for key in GEM_TYPES}
-    for rows in (inv.relic_engravings, inv.armor_engravings):
+    for kind in ("relic", "armor"):
+        rows = getattr(inv, kind + "_engravings") if getattr(inv, "equipped_" + kind) else []
         for row in rows:
             if row and row["option"] in result:
                 result[row["option"]] += row["value"]

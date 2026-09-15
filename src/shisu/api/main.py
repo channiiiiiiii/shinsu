@@ -1,4 +1,6 @@
 import json
+import asyncio
+from contextlib import suppress
 import logging
 import mimetypes
 import os
@@ -32,7 +34,9 @@ class Login(BaseModel):
 
 class Command(BaseModel):
     action: Literal["feed","clean","sleep","train","pet","cure","refresh","rename","dungeon",
-                    "reroll","lock","synthesize","equip_gem","equip_armor","equip_relic","buy","use"]
+                    "reroll","lock","synthesize","equip_gem","equip_armor","equip_relic","buy","use",
+                    "raid","raid_create","raid_join","raid_cancel","potential","enhance_relic","enhance_armor",
+                    "ascend_armor","craft_relic","dismantle_relic","reincarnate"]
     request_id: UUID
     kind: Literal["relic","armor"] = "armor"
     slot: int = Field(default=0, ge=0, le=2)
@@ -43,6 +47,10 @@ class Command(BaseModel):
     index: int = Field(default=0, ge=0, le=10000)
     item: str = Field(default="small_candy", max_length=80)
     name: str = Field(default="", max_length=15)
+    boss: int = Field(default=1, ge=1, le=5)
+    times: int = Field(default=1, ge=1, le=10)
+    room: str = Field(default="", max_length=80)
+    confirmation: str = Field(default="", max_length=20)
 
 
 def create_app(path=None, accounts=None, secure=None):
@@ -56,7 +64,22 @@ def create_app(path=None, accounts=None, secure=None):
             raise RuntimeError("계정마다 서로 다른 24자 이상 무작위 접속 코드가 필요합니다.")
         app.state.accounts = configured
         app.state.db = Database(path or os.getenv("SHISU_DB_PATH", str(ROOT / "data" / "shinsu.sqlite3")))
-        yield
+        async def sync_backups():
+            from shisu.infrastructure.transfer import cloud_backup
+            while True:
+                await asyncio.sleep(60)
+                try:
+                    await run_in_threadpool(cloud_backup, app.state.db)
+                except (ValueError, OSError):
+                    logging.getLogger(__name__).warning("클라우드 백업 실패: 서버 설정을 확인하세요. 로컬 저장은 유지됩니다.")
+        sync = asyncio.create_task(sync_backups()) if os.getenv("SHISU_CLOUD_BACKUP") == "true" else None
+        try:
+            yield
+        finally:
+            if sync:
+                sync.cancel()
+                with suppress(asyncio.CancelledError):
+                    await sync
 
     app = FastAPI(title="신수", version=__version__, lifespan=lifespan)
     cookie_secure = secure if secure is not None else os.getenv("SHISU_COOKIE_SECURE", "true") == "true"
@@ -115,7 +138,12 @@ def create_app(path=None, accounts=None, secure=None):
     @app.get("/api/me")
     def me(request: Request):
         user = identity(request)
-        return view(app.state.db.get(user),app.state.accounts[user]["name"])
+        return {**view(app.state.db.get(user),app.state.accounts[user]["name"]), "account": user}
+
+    @app.get("/api/raids")
+    def raids(request: Request):
+        identity(request)
+        return app.state.db.raid_rooms()
 
     @app.get("/api/catalog")
     def get_catalog(request: Request):
@@ -130,7 +158,7 @@ def create_app(path=None, accounts=None, secure=None):
             result = await run_in_threadpool(app.state.db.action,user,str(body.request_id),command)
         except ValueError as exc:
             raise HTTPException(409,str(exc)) from exc
-        return {"player":view(result["data"],app.state.accounts[user]["name"]),"message":result["message"]}
+        return {"player":{**view(result["data"],app.state.accounts[user]["name"]), "account": user},"message":result["message"]}
 
     app.mount("/assets",StaticFiles(directory=ROOT / "web"),name="assets")
 

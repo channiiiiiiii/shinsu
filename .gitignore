@@ -6,6 +6,7 @@ __pycache__/
 .local/
 *.sqlite3*
 *.db
+*.bak
 *.tmp
 *.egg-info/
 build/

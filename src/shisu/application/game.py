@@ -2,9 +2,10 @@
 import time
 from copy import deepcopy
 from shisu.domain.legacy.pet import Pet
-from shisu.domain.legacy.shop import Inventory, ITEMS_DATABASE, Shop
+from shisu.domain.legacy.shop import Inventory, ITEMS_DATABASE, Shop, EXCLUSIVE_RELICS, ARMORS_DATABASE
 from shisu.domain.legacy.adventure import AdventureSystem, DUNGEON_DATABASE, DUNGEON_DIFFICULTIES
 from shisu.domain.legacy import farming
+from shisu.domain.combat import battle, skills, effects, RAID_LEVELS, BOSS_DATABASE, RAID_DIFFICULTIES
 
 SAVE_VERSION = 2
 
@@ -28,23 +29,37 @@ def view(data, nickname):
     pet, inv = objects(data)
     return {**data, "nickname": nickname, "stats": pet.get_battle_stats(inv),
             "max_energy": pet.max_energy, "max_stamina": pet.max_stamina,
-            "bonus": farming.stat_bonus(inv), "server_time": time.time()}
+            "bonus": farming.stat_bonus(inv), "server_time": time.time(),
+            "skills": skills(pet), "level_cap": pet.get_level_cap(), "relic_cap": pet.get_relic_max_level()}
 
 
 def act(data, command):
     data = migrate(data)
     pet, inv = objects(data)
+    old_stage = pet.stage
+    fx = effects(inv)
     # 분 단위 누적으로 새로고침해도 자연 회복 시간을 잃지 않는다.
     minutes = int(max(0, time.time() - data["last_tick"]) // 60)
     if minutes:
+        old_hunger, old_clean = pet.hunger, pet.cleanliness
         pet.apply_offline_time(minutes)
+        pet.hunger += max(0, old_hunger - pet.hunger) * fx.get("hunger_slow", 0)
+        pet.cleanliness += max(0, old_clean - pet.cleanliness) * fx.get("clean_slow", 0)
         data["last_tick"] += minutes * 60
     name = command["action"]
     ok, message = True, "저장했습니다."
     care = {"feed": pet.feed, "clean": pet.clean, "sleep": pet.sleep_toggle,
             "train": pet.train, "pet": pet.pet_animal, "cure": pet.cure}
     if name in care:
+        energy, happy = pet.energy, pet.happiness
+        old_exp, old_level = pet.exp, pet.level
         ok, message = care[name]()
+        if ok:
+            pet.energy += max(0, energy - pet.energy) * fx.get("energy_save", 0)
+            pet.happiness = min(100, pet.happiness + max(0, pet.happiness - happy) * fx.get("happiness_gain", 0))
+            if name == "train" and fx.get("train_exp"):
+                earned = pet.exp - old_exp + sum(pet.calc_req_exp(level) for level in range(old_level, pet.level))
+                message += "\n" + " ".join(pet.gain_exp(int(max(0, earned) * fx["train_exp"])))
     elif name == "refresh":
         message = "신수 상태를 확인했습니다."
     elif name == "rename":
@@ -55,7 +70,34 @@ def act(data, command):
             raise ValueError("지원하지 않는 던전 또는 난이도입니다.")
         if pet.is_sleeping:
             raise ValueError("신수를 깨운 뒤 모험을 시작해 주세요.")
-        ok, message = AdventureSystem.run_multi_dungeon(pet, inv, dungeon, tier, times=1)
+        if tier >= 4 and not {1, 2, 3, 4}.issubset(pet.raid_clears.get(str(tier - 1), [])):
+            raise ValueError("이전 난이도 레이드의 4대 보스를 먼저 토벌해 주세요.")
+        coins = pet.coins
+        ok, message = AdventureSystem.run_multi_dungeon(pet, inv, dungeon, tier, times=command.get("times", 1))
+        bonus = int(max(0, pet.coins - coins) * fx.get("gold_gain", 0))
+        pet.coins += bonus
+        if bonus:
+            message += f"\n각인 추가 골드 +{bonus}G"
+    elif name == "raid":
+        result = battle([(pet, inv)], command["boss"], command["tier"])
+        data["last_battle"] = result
+        message = result["message"]
+    elif name == "potential":
+        ok, message = pet.upgrade_potential(command["gem"], inv)
+    elif name == "enhance_relic":
+        ok, message, pet.coins = inv.enhance_relic(pet.coins, pet.get_relic_max_level())
+    elif name == "enhance_armor":
+        ok, message, pet.coins = inv.enhance_armor(pet.coins)
+    elif name == "ascend_armor":
+        ok, message, pet.coins = inv.ascend_armor_star(pet.coins)
+    elif name == "craft_relic":
+        ok, message, pet.coins = inv.craft_relic(pet.species_key, pet.coins)
+    elif name == "dismantle_relic":
+        ok, message = inv.dismantle_relic(command["index"])
+    elif name == "reincarnate":
+        if command.get("confirmation") != "환생":
+            raise ValueError("초기화 항목을 확인하고 '환생'을 입력해 주세요.")
+        ok, message = pet.reincarnate(inv)
     elif name == "reroll":
         if not getattr(inv, "equipped_" + command["kind"]):
             raise ValueError("먼저 해당 장비를 장착해 주세요.")
@@ -81,9 +123,9 @@ def act(data, command):
             raise ValueError("보물이 없습니다.")
         ok, message = inv.equip_relic(inv.relics_inventory[command["index"]]["species"])
     elif name == "buy":
-        if command["item"] != "small_candy":
+        if ITEMS_DATABASE.get(command["item"], {}).get("price", 0) <= 0:
             raise ValueError("이 상품은 구매할 수 없습니다.")
-        ok, message = Shop.buy_item(pet, inv, command["item"], 1)
+        ok, message = Shop.buy_item(pet, inv, command["item"], command.get("times", 1))
     elif name == "use":
         if command["item"] not in ITEMS_DATABASE:
             raise ValueError("알 수 없는 아이템입니다.")
@@ -92,10 +134,18 @@ def act(data, command):
         raise ValueError("지원하지 않는 행동입니다.")
     if not ok:
         raise ValueError(message)
+    if pet.stage > old_stage:
+        message += f"\n✨ {pet.stage}단계 진입! 스킬이 자동 강화되었습니다."
     data.update(pet=pet.to_dict(), inventory=inv.to_dict(), revision=data["revision"] + 1)
     return data, message
 
 
 def catalog():
+    items = deepcopy(ITEMS_DATABASE)
+    for tier, label in ((1,"노말"),(2,"하드"),(3,"악몽"),(4,"신화")):
+        for kind, name in (("relic","보물"),("armor","방어구")):
+            items[farming.stone_item_id(kind,tier)] = {"name": f"{label} {name} 각인석", "price": 0, "desc": "각인 화면에서 사용"}
     return {"dungeons": DUNGEON_DATABASE, "difficulties": DUNGEON_DIFFICULTIES,
-            "items": ITEMS_DATABASE, "gems": farming.GEM_VALUES}
+            "items": items, "gems": farming.GEM_VALUES,
+            "bosses": BOSS_DATABASE, "raid_difficulties": RAID_DIFFICULTIES, "raid_levels": RAID_LEVELS,
+            "armors": ARMORS_DATABASE, "relics": EXCLUSIVE_RELICS}

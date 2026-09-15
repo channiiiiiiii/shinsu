@@ -885,10 +885,11 @@ class Pet:
         total_kills = self.boss_kills[kill_key]
 
         # 난이도 완파 체크
-        if len(set(self.raid_clears[diff_str])) == 5 and is_first:
+        required = 5 if diff_id == 5 else 4
+        if len(set(self.raid_clears[diff_str])) == required and is_first:
             diff_names = {1: "⚪ 노말", 2: "🔵 하드", 3: "🟣 악몽", 4: "🟡 신화", 5: "🌌 고대"}
             d_name = diff_names.get(diff_id, "레이드")
-            logs.append(f"🎊👑🎉 **[{d_name} 레이드 완전 정복!]** 5대 보스를 모두 토벌하여 다음 단계의 레벨 상한 및 장비 강화 상한이 전격 해제되었습니다!")
+            logs.append(f"🎊👑🎉 **[{d_name} 레이드 완전 정복!]** {required}대 보스를 모두 토벌하여 성장 관문을 통과했습니다!")
 
         return is_first, total_kills, logs
 
