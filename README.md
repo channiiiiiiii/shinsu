@@ -1,4 +1,4 @@
-# 신수 · Shinsu 0.2.0
+# 신수 · Shinsu 0.2.2
 
 두 사람이 각자의 신수를 키우는 웹게임. HTML/CSS/JS 화면과 FastAPI 게임 서버를 함께 실행하고 SQLite에 저장합니다.
 
@@ -48,6 +48,6 @@ render.yaml                    유료 영구 저장 배포 설정
 
 [운영 가이드](docs/OPERATIONS.md)에 인터넷 배포·접속 코드·백업 방법이 있습니다. Render 설정은 유료 서비스와 영구 디스크를 사용합니다. 아직 외부 서비스에 배포한 상태는 아닙니다.
 
-앱 버전은 0.2.0, 신규 저장 스키마는 2입니다. 변경은 [CHANGELOG.md](CHANGELOG.md)에 누적하고 배포 가능한 커밋만 `main`으로 관리합니다. 원격 저장소는 `channiiiiiiii/shinsu`입니다.
+앱 버전은 0.2.2, 신규 저장 스키마는 2입니다. 변경은 [CHANGELOG.md](CHANGELOG.md)에 누적하고 배포 가능한 커밋만 `main`으로 관리합니다. 원격 저장소는 `channiiiiiiii/shinsu`입니다.
 
 공유 레이드와 개인 레이드 웹 화면, 강화·환생·Supabase 연결은 후속 범위입니다. 기존 0.1 JSON과 DAMAGOCHI 운영 저장은 자동 이전하지 않습니다. 파밍 가이드의 전체 충족 여부는 [대조표](docs/FARMING_GUIDE_AUDIT.md)를 참고하세요.
