@@ -3,7 +3,8 @@ services:
   - type: web
     name: shinsu
     runtime: python
-    plan: starter
+    # Render의 예전 Starter 이름은 현재 0.5 CPU / 512 MB 플랜 ID로 표시된다.
+    plan: 0.5c-512mb
     buildCommand: pip install -e .
     startCommand: uvicorn shisu.api.main:app --host 0.0.0.0 --port $PORT --workers 1
     healthCheckPath: /api/health

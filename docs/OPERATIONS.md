@@ -21,7 +21,7 @@
 ## 인터넷 배포
 
 1. Render에서 GitHub `channiiiiiiii/shinsu` 저장소를 Blueprint로 연결한다.
-2. `render.yaml`의 유료 Starter 서비스와 1GB 영구 디스크 비용을 확인한다.
+2. `render.yaml`의 `0.5c-512mb`(화면 표시: 0.5 CPU / 512 MB, 월 $7) 서비스와 1GB 영구 디스크 비용을 확인한다. `$7`은 Hobby 워크스페이스 선택 화면이 아니라 Web Service의 Compute 선택 단계에 표시된다.
 3. `SHISU_ACCOUNTS`에 `.local/accounts.json`의 JSON 내용을 비밀 환경변수로 입력한다. 코드를 저장소에 커밋하지 않는다.
 4. 배포 후 발급된 HTTPS 주소에서 두 계정으로 로그인한다.
 5. 한 계정으로 던전 진행 → 로그아웃 → 다른 계정 저장 격리 확인 → 서버 재시작 후 보존 확인.
