@@ -1,6 +1,7 @@
 const $ = selector => document.querySelector(selector);
 const labels = {hp:'체력',atk:'공격력',def:'방어력',spd:'속도',crit:'치명타'};
 const grades = {normal:'일반',advanced:'고급',rare:'희귀',hero:'영웅',legend:'전설',relic:'유물',ancient:'고대'};
+const speciesAssets = {'호랑이':'tiger','사자':'lion','늑대':'wolf','드래곤':'dragon','불사조':'phoenix','현무':'turtle','구미호':'fox','그리핀':'griffin','기린':'kirin','바하무트':'bahamut'};
 let player, catalog, busy = false, pending = null;
 const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -19,7 +20,13 @@ function button(title,action,fields={}){return `<button data-action="${action}" 
 function render(){
   const pet=player.pet, inv=player.inventory;
   $('#greeting').textContent=`${player.nickname} 테이머의 정원`;
-  $('#pet-art').textContent=pet.emoji || '🐾'; $('#pet-name').textContent=pet.name;
+  const portrait=$('#pet-art'), slug=speciesAssets[pet.species_key], stage=Math.max(1,Math.min(4,Number(pet.stage)||1));
+  $('#pet-fallback').textContent=pet.emoji || '🐾';
+  portrait.alt=`${pet.species_name} ${stage}단계 ${pet.name}`;
+  portrait.hidden=!slug;
+  if(slug) portrait.src=`/assets/game-assets/species/${slug}/stage${stage}.webp`;
+  portrait.onerror=()=>{portrait.hidden=true;};
+  $('#pet-name').textContent=pet.name;
   $('#pet-role').textContent=`${pet.species_name} · ${pet.role}`;
   $('#pet-level').textContent=`Lv.${pet.level} · 경험치 ${pet.exp} / ${pet.max_exp} · ${pet.coins.toLocaleString()} 골드`;
   $('#pet-state').textContent=pet.is_sleeping?'지금은 꿈속을 여행 중이에요.':pet.is_sick?'몸이 좋지 않아요. 치료가 필요해요.':'오늘은 어떤 모험을 해볼까요?';

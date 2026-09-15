@@ -1,5 +1,6 @@
 import json
 import logging
+import mimetypes
 import os
 import secrets
 import sqlite3
@@ -21,6 +22,7 @@ from shisu.application.game import catalog, view
 from shisu.infrastructure.database import Database
 
 ROOT = Path(__file__).resolve().parents[3]
+mimetypes.add_type("image/webp", ".webp")
 
 
 class Login(BaseModel):

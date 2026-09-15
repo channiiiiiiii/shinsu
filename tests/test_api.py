@@ -112,6 +112,16 @@ def test_화면과_서비스워커(client):
     assert client.get('/api/health').json()['status']=='ok'
 
 
+def test_모든_종족_성장_이미지_제공(client):
+    species=('tiger','lion','wolf','dragon','phoenix','turtle','fox','griffin','kirin','bahamut')
+    for name in species:
+        for stage in range(1,5):
+            response=client.get(f'/assets/game-assets/species/{name}/stage{stage}.webp')
+            assert response.status_code==200
+            assert response.headers['content-type']=='image/webp'
+            assert len(response.content)>10000
+
+
 def test_서버_설정_없으면_시작_차단(tmp_path):
     with pytest.raises(RuntimeError):
         with TestClient(create_app(tmp_path/'save.sqlite3',{},False)):
