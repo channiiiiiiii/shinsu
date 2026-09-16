@@ -199,10 +199,10 @@ class Pet:
         self.species_name = sp_data.get("name", new_sp_key)
         self.emoji = sp_data.get("emoji", "🐾")
         self.tier = sp_data.get("tier", "일반")
-        self.element = sp_data.get("element", "무속성")
+        self.element = sp_data.get("element", getattr(self, "element", "무속성"))
         self.role = sp_data.get("role", "공격형")
         self.role_desc = sp_data.get("role_desc", "")
-        self.effect = sp_data.get("effect", "atk_boost")
+        self.effect = sp_data.get("effect", getattr(self, "effect", "atk_boost"))
 
         if not getattr(self, "is_custom_name", False):
             self.name = f"아기 {self.species_name}" if self.level <= 10 else self.species_name

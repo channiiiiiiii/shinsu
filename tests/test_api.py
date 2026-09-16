@@ -169,6 +169,25 @@ def test_백업_복원(tmp_path):
     assert Database(tmp_path/'backup.sqlite3').get('player1')==before
 
 
+def test_관리자_종족변경은_진행도와강화도를_보존(tmp_path):
+    db = Database(tmp_path/'save.sqlite3')
+    before = db.get('player2')
+    before['pet'].update(name='내 신수', is_custom_name=True, level=17, coins=54321, element='질풍')
+    before['inventory']['equipped_relic'] = {'species': before['pet']['species_key'], 'level': 6}
+    with db.connect() as sql:
+        sql.execute('UPDATE players SET data=? WHERE id=?', (json.dumps(before, ensure_ascii=False), 'player2'))
+
+    db.change_species('player2', '기린')
+    after = db.get('player2')
+
+    assert after['pet']['species_key'] == '기린'
+    assert after['pet']['name'] == '내 신수'
+    assert after['pet']['level'] == 17 and after['pet']['coins'] == 54321
+    assert after['pet']['element'] == '질풍'
+    assert after['inventory']['equipped_relic'] == {'species': '기린', 'level': 6}
+    assert after['revision'] == before['revision'] + 1
+
+
 def test_화면과_서비스워커(client):
     assert client.get('/').status_code==200
     assert client.get('/sw.js').status_code==200

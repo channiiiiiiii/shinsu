@@ -53,6 +53,22 @@ class Database:
             db.execute("BEGIN IMMEDIATE")
             return self.load(db, user)
 
+    def change_species(self, user, species):
+        """관리자가 기존 진행도를 보존한 채 한 계정의 종족만 변경한다."""
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT data FROM players WHERE id=?", (user,)).fetchone()
+            if not row:
+                raise ValueError(f"저장된 계정을 찾을 수 없습니다: {user}")
+            data = migrate(json.loads(row[0]))
+            pet, inventory = objects(data)
+            ok, message = pet.change_species(species, inventory)
+            if not ok:
+                raise ValueError(message)
+            data.update(pet=pet.to_dict(), inventory=inventory.to_dict(), revision=data["revision"] + 1)
+            db.execute("UPDATE players SET data=? WHERE id=?", (json.dumps(data, ensure_ascii=False), user))
+            return message
+
     def action(self, user, key, command):
         body = json.dumps(command, sort_keys=True)
         with self.connect() as db:

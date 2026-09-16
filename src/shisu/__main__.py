@@ -3,25 +3,35 @@ import argparse
 import json
 import os
 import secrets
+import time
 from pathlib import Path
 
 
 def main():
     parser = argparse.ArgumentParser(description="신수 로컬 서버와 백업")
-    parser.add_argument("command", choices=["run","backup","export-save","import-save","cloud-backup","cloud-import"])
+    parser.add_argument("command", choices=["run","backup","export-save","import-save","cloud-backup","cloud-import","change-species"])
     parser.add_argument("--output")
     parser.add_argument("--input")
     parser.add_argument("--account", choices=["player1","player2"])
     parser.add_argument("--legacy-id")
+    parser.add_argument("--species")
     parser.add_argument("--replace", action="store_true")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
-    if args.command in ("export-save","import-save","cloud-backup","cloud-import"):
+    if args.command in ("export-save","import-save","cloud-backup","cloud-import","change-species"):
         from shisu.infrastructure.database import Database
         from shisu.infrastructure.transfer import import_save, cloud_backup, cloud_download
         database = Database(os.getenv("SHISU_DB_PATH", str(root / "data/shinsu.sqlite3")))
         try:
-            if args.command == "cloud-backup":
+            if args.command == "change-species":
+                if not args.account or not args.species:
+                    parser.error("--account와 --species를 모두 지정하세요.")
+                backup = database.path.with_name(f"{database.path.stem}-before-species-{args.account}-{time.strftime('%Y%m%d-%H%M%S')}.sqlite3")
+                database.backup(backup)
+                message = database.change_species(args.account, args.species)
+                print(f"안전 백업: {backup}")
+                print(message)
+            elif args.command == "cloud-backup":
                 cloud_backup(database)
             else:
                 if not args.account:
