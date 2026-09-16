@@ -29,7 +29,30 @@ class Database:
                     user_id TEXT PRIMARY KEY, nickname TEXT NOT NULL,
                     password_salt BLOB NOT NULL, password_hash BLOB NOT NULL,
                     created REAL NOT NULL);
+                CREATE TABLE IF NOT EXISTS data_migrations (
+                    id TEXT PRIMARY KEY, previous_data TEXT NOT NULL, applied REAL NOT NULL);
             ''')
+            self._apply_admin_migrations(db)
+
+    @staticmethod
+    def _apply_admin_migrations(db):
+        """명시적으로 승인된 운영 세이브 변경을 정확히 한 번 적용한다."""
+        migration_id = "20260916-player2-kirin"
+        if db.execute("SELECT 1 FROM data_migrations WHERE id=?", (migration_id,)).fetchone():
+            return
+        row = db.execute("SELECT data FROM players WHERE id='player2'").fetchone()
+        if not row:
+            return
+        previous = row[0]
+        data = migrate(json.loads(previous))
+        pet, inventory = objects(data)
+        if pet.species_key != "기린":
+            ok, message = pet.change_species("기린", inventory)
+            if not ok:
+                raise ValueError(message)
+            data.update(pet=pet.to_dict(), inventory=inventory.to_dict(), revision=data["revision"] + 1)
+            db.execute("UPDATE players SET data=? WHERE id='player2'", (json.dumps(data, ensure_ascii=False),))
+        db.execute("INSERT INTO data_migrations VALUES (?,?,?)", (migration_id, previous, time.time()))
 
     @contextmanager
     def connect(self):

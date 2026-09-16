@@ -188,6 +188,27 @@ def test_관리자_종족변경은_진행도와강화도를_보존(tmp_path):
     assert after['revision'] == before['revision'] + 1
 
 
+def test_승인된_player2_기린변경은_재배포시한번만적용(tmp_path):
+    path = tmp_path/'save.sqlite3'
+    db = Database(path)
+    before = db.get('player2')
+    before['pet'].update(name='차니의 신수', is_custom_name=True, level=23, coins=76543)
+    before['inventory']['equipped_relic'] = {'species': before['pet']['species_key'], 'level': 8}
+    with db.connect() as sql:
+        sql.execute('UPDATE players SET data=? WHERE id=?', (json.dumps(before, ensure_ascii=False), 'player2'))
+
+    Database(path)
+    changed = Database(path).get('player2')
+    assert changed['pet']['species_key'] == '기린'
+    assert changed['pet']['name'] == '차니의 신수'
+    assert changed['pet']['level'] == 23 and changed['pet']['coins'] == 76543
+    assert changed['inventory']['equipped_relic'] == {'species': '기린', 'level': 8}
+    assert changed['revision'] == before['revision'] + 1
+    with db.connect() as sql:
+        migration = sql.execute("SELECT previous_data FROM data_migrations WHERE id='20260916-player2-kirin'").fetchone()
+    assert json.loads(migration[0]) == before
+
+
 def test_화면과_서비스워커(client):
     assert client.get('/').status_code==200
     assert client.get('/sw.js').status_code==200
