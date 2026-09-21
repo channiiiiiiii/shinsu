@@ -40,7 +40,7 @@ class Signup(BaseModel):
 
 class Command(BaseModel):
     action: Literal["feed","clean","sleep","train","pet","cure","refresh","rename","pet_reroll","dungeon",
-                    "reroll","lock","synthesize","equip_gem","equip_armor","equip_relic","buy","use",
+                    "reroll","lock","synthesize","equip_gem","unequip_gem","equip_armor","equip_relic","buy","use",
                     "raid","raid_create","raid_join","raid_cancel","potential","enhance_relic","enhance_armor",
                     "ascend_armor","craft_relic","dismantle_relic","reincarnate"]
     request_id: UUID

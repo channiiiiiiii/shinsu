@@ -8,17 +8,16 @@ nav{flex-wrap:wrap}
 #growth-skills .tile,#shop-items .tile{min-width:0;overflow-wrap:anywhere}
 @media(max-width:600px){nav{gap:4px}nav button{padding:10px;font-size:13px}#panel-forge .actions{grid-template-columns:1fr}}
 
-/* 차트와 실제 수치를 나란히 표시한다. */
+/* 메인 전투력과 실제 수치만 간결하게 표시한다. */
 #stats{display:block;padding:18px 12px;margin:20px 0;border:1px solid #d7ded0;border-radius:16px;background:#f6f8f0}
 #stats .combat-power{position:static;transform:none;padding:0 0 12px;background:none;text-align:left;font-size:15px}
 #stats .combat-power strong{display:inline;font-size:23px;margin-left:8px}
-.stat-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(110px,.6fr);align-items:center;gap:10px}
-.stat-radar svg{display:block;width:100%;max-height:330px}
-.radar-grid{fill:none;stroke:#cbd7cd;stroke-width:1}
-.radar-value{fill:#3d756b55;stroke:#245b50;stroke-width:2}
-.stat-radar text{font:9px system-ui;fill:#405c50}
-.stat-values{display:grid;gap:15px;min-width:0}
-.stat-value{display:grid;grid-template-columns:22px 39px minmax(0,1fr);align-items:center;gap:5px}
+.stat-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 20px;min-width:0}
+.stat-value{position:relative;display:grid;grid-template-columns:22px 39px minmax(0,1fr);align-items:center;gap:5px;min-width:0;padding:7px 6px;text-align:left;border:0;background:transparent;cursor:help}
+.stat-value:hover,.stat-value:focus-visible,.stat-value:focus{background:#e7eee3}
+.stat-tooltip{display:none;position:absolute;z-index:2;top:calc(100% + 2px);left:0;min-width:180px;padding:8px 11px;border-radius:8px;background:#244f43;color:#fff!important;font-size:12px!important;white-space:nowrap;box-shadow:0 5px 14px #203e3640}
+.stat-tooltip span{display:block;color:#fff!important;font-size:12px!important;line-height:1.6}
+.stat-value:hover .stat-tooltip,.stat-value:focus .stat-tooltip{display:block}
 #stats .stat-value span{font-size:12px;color:#52695e}
 #stats .stat-value strong{margin:0;font-size:16px;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .stat-icon{display:inline-block;width:21px;height:21px;flex-shrink:0;fill:currentColor;stroke:currentColor;stroke-width:1;stroke-linejoin:round}
@@ -28,6 +27,7 @@ nav{flex-wrap:wrap}
 .gem-group{padding:12px 0;border-bottom:1px solid #dce3d5}
 .gem-group h4{display:flex;align-items:center;gap:9px;margin:0;font-size:14px}
 .gem-group h4 span{flex:1}.gem-group h4 b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.gem-group h4 button{padding:6px 10px;font-size:12px}
 .battle-summary{display:block}.battle-summary h3{margin:0 0 10px;font-size:15px}.battle-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.battle-top strong{width:auto;font-size:25px}.battle-top small{font-size:13px}.battle-values{display:grid;gap:8px}.battle-values>div{display:flex;gap:8px;align-items:center}.battle-values span{border:0;background:none;padding:0;font-size:14px}.battle-values b{margin-left:auto;font-size:15px;font-variant-numeric:tabular-nums}
 #potential-stats{border:1px solid #d9e1d3;border-radius:16px;background:#f6f8f0;padding:0 14px}.potential-row{padding:14px 0;border-bottom:1px solid #dbe3d5}.potential-row:last-child{border:0}.potential-heading,.potential-heading h4{display:flex;align-items:center;gap:7px}.potential-heading{justify-content:space-between;margin-bottom:10px}.potential-heading h4{margin:0;font-size:14px;flex-wrap:wrap}.potential-heading strong{font-size:20px;color:#245c43}.potential-heading button{padding:8px;font-size:12px;white-space:nowrap}.potential-track{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.potential-cells{display:grid;grid-template-columns:repeat(5,1fr);gap:2px}.potential-cells i{height:15px;background:#d9ded7;border-radius:2px}.tier-0 .filled{background:#699266}.tier-1 .filled{background:#4e8bc2}.tier-2 .filled{background:#9468c2}.tier-3 .filled{background:#d4a947}.potential-group small{display:block;text-align:center;font-size:10px;margin-top:5px;color:#647360}.potential-caption{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:9px;font-size:12px;color:#61715d}.potential-caption small{font-size:11px}
 #forge-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:16px;margin:18px 0}.forge-card{border:1px solid #ccd6c5;border-radius:16px;padding:18px;background:#faf9ef;min-width:0;overflow-wrap:anywhere}.forge-card h3{font-size:18px;margin:8px 0}.forge-card h3 b{white-space:nowrap}.forge-card h4{font-size:13px;margin:15px 0 8px}.forge-card p{line-height:1.5}.forge-card .primary{width:100%;margin-top:14px}.forge-next{font-size:24px;margin:12px 0}.forge-label{font-size:11px;margin:8px 0}.forge-stat{display:flex;align-items:center;gap:6px;font-size:12px;margin:6px 0}.forge-stat>span:last-child{margin-left:auto;font-variant-numeric:tabular-nums}.forge-stat svg{width:16px;height:16px}.forge-rate{margin-top:18px}.forge-rate label{display:flex;justify-content:space-between;font-size:12px}.forge-rate progress,.forge-stage progress{width:100%;height:12px;accent-color:#649a66}.risk-medium .forge-rate progress{accent-color:#c69332}.risk-high .forge-rate progress{accent-color:#b75345}.forge-material{display:flex;justify-content:space-between;gap:12px;font-size:12px;margin:7px 0}.shortage,.forge-error{color:#b13125}.grade-soft{box-shadow:0 0 12px #9bb78f38}.grade-bright{box-shadow:0 0 18px #c0b56d55;border-color:#c5b862}.grade-gold{box-shadow:0 0 18px #e4b84866;border-color:#c99b32}.forge-stage{font-size:13px}.forge-stage>b{display:block;margin-top:16px}.forging{animation:forge-glow .65s ease-in-out infinite alternate}.forging.risk-high{animation-duration:.3s}.forge-result{padding:12px 0 0;margin-top:14px;border-top:1px solid #ded6b4}.forge-result strong{font-size:19px}.forge-result p{font-size:13px;margin:8px 0}.forge-result small{font-size:11px}.forge-result.success{animation:forge-success .8s ease-out;color:#786013}.forge-result.failure{animation:forge-failure .5s ease-out;color:#983e31}.forge-card button:disabled{cursor:not-allowed;opacity:.55}
@@ -35,4 +35,5 @@ nav{flex-wrap:wrap}
 @keyframes forge-success{0%{background:#ffe99d;transform:scale(.97)}45%{transform:scale(1.025)}100%{background:transparent;transform:scale(1)}}
 @keyframes forge-failure{0%,70%{background:#f2c5be;transform:translateX(-3px)}35%{transform:translateX(3px)}100%{background:transparent;transform:translateX(0)}}
 @media(prefers-reduced-motion:reduce){.forging,.forge-result.success,.forge-result.failure{animation:none}}
-@media(max-width:360px){#stats{padding:12px 8px}.stat-layout{gap:5px;grid-template-columns:minmax(0,1fr) 110px}.stat-values{gap:12px}#stats .stat-value strong{font-size:14px}.stat-value{grid-template-columns:18px 34px minmax(0,1fr);gap:3px}.stat-icon{width:18px;height:18px}.gem-group h4{font-size:13px}}
+@media(max-width:600px){.stat-values{grid-template-columns:1fr}}
+@media(max-width:360px){#stats{padding:12px 8px}.stat-values{gap:10px}#stats .stat-value strong{font-size:14px}.stat-value{grid-template-columns:18px 34px minmax(0,1fr);gap:3px}.stat-icon{width:18px;height:18px}.gem-group h4{font-size:13px}}

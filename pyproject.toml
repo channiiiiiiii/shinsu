@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shisu"
-version = "0.3.7"
+version = "0.3.8"
 description = "신수 육성 라이브 웹 서비스"
 requires-python = ">=3.10"
 dependencies = [

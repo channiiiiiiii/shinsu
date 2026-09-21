@@ -7,6 +7,7 @@ from shisu.domain.legacy.adventure import AdventureSystem, DUNGEON_DATABASE, DUN
 from shisu.domain.legacy import farming
 from shisu.domain.combat import battle, skills, effects, RAID_LEVELS, BOSS_DATABASE, RAID_DIFFICULTIES
 from shisu.application.enhancement import ACTIONS as ENHANCEMENTS, quote
+from shisu.application.stat_breakdown import breakdown
 
 SAVE_VERSION = 2
 
@@ -31,6 +32,7 @@ def objects(data):
 def view(data, nickname):
     pet, inv = objects(data)
     return {**data, "nickname": nickname, "stats": pet.get_battle_stats(inv),
+            "stat_breakdown": breakdown(pet, inv),
             "max_energy": pet.max_energy, "max_stamina": pet.max_stamina,
             "bonus": farming.stat_bonus(inv), "server_time": time.time(),
             "skills": skills(pet), "level_cap": pet.get_level_cap(), "relic_cap": pet.get_relic_max_level(),
@@ -134,6 +136,9 @@ def act(data, command):
     elif name == "equip_gem":
         ok = farming.equip_gem(inv, command["gem"], command["level"])
         message = "보석을 장착했습니다." if ok else "보유한 보석을 선택해 주세요."
+    elif name == "unequip_gem":
+        ok = farming.unequip_gem(inv, command["gem"])
+        message = "보석을 해제했습니다." if ok else "장착 중인 보석이 없습니다."
     elif name == "equip_armor":
         ok, message = inv.equip_armor(command["index"])
     elif name == "equip_relic":

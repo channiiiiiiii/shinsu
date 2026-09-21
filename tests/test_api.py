@@ -38,10 +38,12 @@ def test_로그인_필수와_타인_주소_차단(client):
 def test_전투_스탯_UI_정적_자원(client):
     script=client.get('/assets/app.js').text
     style=client.get('/assets/expansion.css').text
-    assert 'statPentagon' in script
+    assert 'statOverview' in script
+    assert 'stat-radar' not in script
+    assert 'stat_breakdown' in script
     assert '입장 레벨 Lv.' in script
     assert "hp:'#155b3a'" in script
-    assert '.stat-layout' in style
+    assert '.stat-tooltip' in style
 
 
 def test_잘못된_코드와_사이트간_요청_차단(client):
@@ -81,6 +83,31 @@ def test_신수_이름_변경_검증_및_영구저장(client):
         response=client.post('/api/actions',json={'action':'rename','request_id':str(uuid4()),'name':name},headers=HEADERS)
         assert response.status_code in (409,422)
         assert client.get('/api/me').json()['pet']['name']=='달빛이'
+
+
+def test_보석_해제_수량보존_전투력반영_재장착(client):
+    login(client)
+    db = client.app.state.db
+    before = db.get('player1')
+    before['inventory']['gems']['hp']['2'] = 1
+    with db.connect() as sql:
+        sql.execute('UPDATE players SET data=? WHERE id=?', (json.dumps(before, ensure_ascii=False), 'player1'))
+    equip = client.post('/api/actions', json={'action':'equip_gem','gem':'hp','level':2,'request_id':str(uuid4())}, headers=HEADERS)
+    assert equip.status_code == 200
+    equipped = equip.json()['player']
+    assert equipped['inventory']['equipped_gems']['hp'] == 2
+    unequip = client.post('/api/actions', json={'action':'unequip_gem','gem':'hp','request_id':str(uuid4())}, headers=HEADERS)
+    assert unequip.status_code == 200
+    after = unequip.json()['player']
+    assert after['inventory']['equipped_gems']['hp'] == 0
+    assert after['inventory']['gems']['hp']['2'] == 1
+    assert after['stats']['max_hp'] < equipped['stats']['max_hp']
+    assert after['stat_breakdown']['hp'][-1] == {'label':'보석','value':0}
+    assert client.get('/api/me').json()['inventory']['equipped_gems']['hp'] == 0
+    assert client.post('/api/actions', json={'action':'unequip_gem','gem':'hp','request_id':str(uuid4())}, headers=HEADERS).status_code == 409
+    again = client.post('/api/actions', json={'action':'equip_gem','gem':'hp','level':2,'request_id':str(uuid4())}, headers=HEADERS)
+    assert again.status_code == 200
+    assert again.json()['player']['inventory']['equipped_gems']['hp'] == 2
 
 
 def test_Lv1_초기_신수_리롤은_무료_3회만_가능(client):

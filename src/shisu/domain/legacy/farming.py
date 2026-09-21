@@ -134,6 +134,14 @@ def equip_gem(inv, gem_type, level):
     return True
 
 
+def unequip_gem(inv, gem_type):
+    if gem_type not in GEM_TYPES or not inv.equipped_gems.get(gem_type, 0):
+        return False
+    # 장착 보석은 이미 보유 수량에 포함돼 있으므로 해제할 때 수량을 늘리지 않는다.
+    inv.equipped_gems[gem_type] = 0
+    return True
+
+
 def stat_bonus(inv):
     result = {key: 0 for key in GEM_TYPES}
     for kind in ("relic", "armor"):
