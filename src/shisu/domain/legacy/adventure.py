@@ -461,11 +461,12 @@ BOSS_SKILLS_DATABASE = {
     }
 }
 
-def choose_boss_action(boss_id: int, diff_id: int, hp_ratio: float, turn: int, cd_a: int, cd_b: int, ult_used: bool, warning_active: bool, ctx: dict = None) -> str:
+def choose_boss_action(boss_id: int, diff_id: int, hp_ratio: float, turn: int, cd_a: int, cd_b: int, ult_used: bool, warning_active: bool, ctx: dict = None, rng=None) -> str:
     """
     🧠 지능형 보스 AI 액션 셀렉터 (v15.0)
     반환값: 'warning_ult', 'ultimate', 'skill_a', 'skill_b', 'basic'
     """
+    rng = rng or random
     b_skills = BOSS_SKILLS_DATABASE.get(boss_id, BOSS_SKILLS_DATABASE[1])
     ult_info = b_skills.get("ultimate", {})
 
@@ -512,9 +513,9 @@ def choose_boss_action(boss_id: int, diff_id: int, hp_ratio: float, turn: int, c
             return "skill_a"
 
     # 4. 일반 쿨타임 완료 스킬 사용 (우선순위: A > B)
-    if cd_a == 0 and random.random() < 0.70:
+    if cd_a == 0 and rng.random() < 0.70:
         return "skill_a"
-    if cd_b == 0 and random.random() < 0.70:
+    if cd_b == 0 and rng.random() < 0.70:
         return "skill_b"
 
     # 5. 기본 공격

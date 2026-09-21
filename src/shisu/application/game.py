@@ -5,7 +5,7 @@ from shisu.domain.legacy.pet import Pet
 from shisu.domain.legacy.shop import Inventory, ITEMS_DATABASE, Shop, EXCLUSIVE_RELICS, ARMORS_DATABASE
 from shisu.domain.legacy.adventure import AdventureSystem, DUNGEON_DATABASE, DUNGEON_DIFFICULTIES
 from shisu.domain.legacy import farming
-from shisu.domain.combat import battle, skills, effects, RAID_LEVELS, BOSS_DATABASE, RAID_DIFFICULTIES
+from shisu.domain.combat import skills, effects, RAID_LEVELS, BOSS_DATABASE, RAID_DIFFICULTIES
 from shisu.application.enhancement import ACTIONS as ENHANCEMENTS, quote
 from shisu.application.stat_breakdown import breakdown
 
@@ -98,10 +98,6 @@ def act(data, command):
         pet.coins += bonus
         if bonus:
             message += f"\n각인 추가 골드 +{bonus}G"
-    elif name == "raid":
-        result = battle([(pet, inv)], command["boss"], command["tier"])
-        data["last_battle"] = result
-        message = result["message"]
     elif name == "potential":
         ok, message = pet.upgrade_potential(command["gem"], inv)
     elif name == "enhance_relic":

@@ -189,6 +189,76 @@ def test_장착_보석을_합성으로_소모하지_않음(tmp_path):
     assert d['inventory']['gems']['hp']['1']==2
 
 
+def test_혼자_레이드는_직접_스킬을_선택해야_턴이_진행된다(tmp_path):
+    path=tmp_path/'raid.sqlite3'
+    db=Database(path)
+    before=db.get('player1')
+    db.action('player1','start',{'action':'raid','boss':1,'tier':1})
+    room=db.raid_rooms('player1')[0]
+    assert room['status']=='active' and room['state']['turns']==0
+    assert db.get('player1')['pet']['stamina']==before['pet']['stamina']
+    assert 'saves' not in room and 'seed' not in room
+    with pytest.raises(ValueError,match='쿨타임'):
+        db.action('player1','early',{'action':'raid_turn','room':room['id'],'skill':'ultimate'})
+    with pytest.raises(ValueError,match='진행 중'):
+        db.action('player1','feed',{'action':'feed'})
+    choice={'action':'raid_turn','room':room['id'],'skill':'basic1'}
+    first=db.action('player1','turn-one',choice)
+    again=db.action('player1','turn-one',choice)
+    assert first==again
+    assert Database(path).raid_rooms('player1')[0]['state']['turns']==1
+    assert not db.raid_rooms('player2')
+    db.action('player1','retreat',{'action':'raid_retreat','room':room['id']})
+    assert not db.raid_rooms('player1')
+    assert db.get('player1')['pet']['stamina']<before['pet']['stamina']
+
+
+def test_협동_레이드는_두_테이머가_모두_선택해야_진행된다(tmp_path):
+    db=Database(tmp_path/'coop.sqlite3')
+    db.get('player1')
+    db.get('player2')
+    db.action('player1','create',{'action':'raid_create','boss':1,'tier':1})
+    room=db.raid_rooms('player2')[0]
+    db.action('player2','join',{'action':'raid_join','room':room['id']})
+    db.action('player1','host-turn',{'action':'raid_turn','room':room['id'],'skill':'basic1'})
+    waiting=db.raid_rooms('player1')[0]
+    assert waiting['chosen'] and waiting['state']['turns']==0
+    assert db.raid_rooms('player2')[0]['chosen'] is False
+    db.action('player2','guest-turn',{'action':'raid_turn','room':room['id'],'skill':'basic2'})
+    advanced=db.raid_rooms('player1')[0]
+    assert advanced['state']['turns']==1 and not advanced['chosen']
+    assert advanced['state']['boss_hp']<advanced['state']['boss_max_hp']
+
+
+def test_혼자_레이드_시작은_기존_협동_대기방을_닫는다(tmp_path):
+    db=Database(tmp_path/'save.sqlite3')
+    db.get('player1')
+    db.action('player1','create',{'action':'raid_create','boss':1,'tier':1})
+    waiting=db.raid_rooms('player2')[0]
+    db.action('player1','solo',{'action':'raid','boss':1,'tier':1})
+    assert waiting['id'] not in [room['id'] for room in db.raid_rooms('player2')]
+    assert db.raid_rooms('player1')[0]['status']=='active'
+
+
+def test_수동_레이드_승리는_한번만_정산되고_저장된다(tmp_path, monkeypatch):
+    from shisu.domain import combat
+    original=combat.BOSS_STAT_TABLE[1][1]
+    monkeypatch.setitem(combat.BOSS_STAT_TABLE[1],1,{**original,'hp':1,'def':0})
+    path=tmp_path/'win.sqlite3'
+    db=Database(path)
+    before=db.get('player1')
+    db.action('player1','start',{'action':'raid','boss':1,'tier':1})
+    room=db.raid_rooms('player1')[0]
+    command={'action':'raid_turn','room':room['id'],'skill':'basic1'}
+    first=db.action('player1','finish',command)
+    assert first['data']['last_battle']['won']
+    assert first['data']['last_battle']['turns']==1
+    assert first['data']['pet']['coins']>before['pet']['coins']
+    assert db.action('player1','finish',command)==first
+    assert Database(path).get('player1')==first['data']
+    assert not db.raid_rooms('player1')
+
+
 def test_백업_복원(tmp_path):
     db=Database(tmp_path/'save.sqlite3')
     before=db.get('player1')

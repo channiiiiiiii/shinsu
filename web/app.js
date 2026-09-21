@@ -11,7 +11,7 @@ function statIcon(kind,heart=false){
   const paths={hp:'M12 21 3 12C-3 4 7-1 12 6 17-1 27 4 21 12Z',atk:'m15 2 7 0 0 7-10 10-7-7Z M3 16l5 5 M2 22l4-4',def:'M12 2 22 6 20 15 12 22 4 15 2 6Z',spd:'M14 1 3 14h8l-1 9 11-14h-8Z',crit:'m12 1 3 7 7-4-4 8 5 4-8 1-3 6-3-7-8 2 5-7-4-6 8 3Z'};
   return `<svg class="stat-icon icon-${heart?kind:kind==='hp'?'heart':kind}" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[heart?'hp':kind]}"/></svg>`;
 }
-let player, catalog, busy = false, pending = null;
+let player, catalog, busy = false, pending = null, activeRaid = null;
 const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 async function api(path, body) {
@@ -34,7 +34,7 @@ async function loadSignupStatus(){
   try{const status=await api('/api/signup-status');$('#signup-open').hidden=!status.available;}
   catch(error){$('#signup-open').hidden=true;}
 }
-function showLogin(){ $('#login').hidden=false; $('#game').hidden=true; $('#logout').hidden=true; player=null; pending=null; }
+function showLogin(){ $('#login').hidden=false; $('#game').hidden=true; $('#logout').hidden=true; player=null; pending=null; activeRaid=null; }
 function button(title,action,fields={}){return `<button data-action="${action}" ${Object.entries(fields).map(([k,v])=>`data-${k}="${esc(v)}"`).join(' ')}>${esc(title)}</button>`;}
 function battleSummary(){const s=player.stats;return `<h3>내 전투 정보</h3><div class="battle-top"><strong>CP ${s.combat_power.toLocaleString()}</strong><small>Lv.${player.pet.level}</small></div><div class="battle-values">${Object.entries(labels).map(([k,label])=>`<div>${statIcon(k)}<span>${label}</span><b>${s[k==='hp'?'max_hp':k].toLocaleString()}</b></div>`).join('')}</div>`;}
 function statOverview(){
@@ -70,7 +70,17 @@ function render(){
   const armorName=a=>catalog.armors[a.armor_id]?.name||a.armor_id;
   const relicName=r=>catalog.relics[r.species]?.name||`${r.species} 보물`;
   $('#equipment').innerHTML=`<p>장착 방어구: ${inv.equipped_armor?esc(`${armorName(inv.equipped_armor)} +${inv.equipped_armor.level}`):'없음'} · 보물: ${inv.equipped_relic?esc(`${relicName(inv.equipped_relic)} +${inv.equipped_relic.level}`):'없음'}</p>`+inv.armors_inventory.map((a,i)=>`<div class="row"><span>${esc(armorName(a))} +${a.level}</span>${button('장착','equip_armor',{index:i})}</div>`).join('')+inv.relics_inventory.map((r,i)=>`<div class="row"><span>${esc(relicName(r))} +${r.level}</span>${button('장착','equip_relic',{index:i})}</div>`).join('');
-  $('#gems').innerHTML=Object.keys(labels).map(gem=>`<section class="gem-group"><h4>${statIcon(gem,true)}<span>${gemNames[gem]}</span><b aria-label="장착 보석 레벨">Lv.${inv.equipped_gems[gem]||0}</b>${inv.equipped_gems[gem]?button('해제','unequip_gem',{gem}):''}</h4>`+Object.entries(inv.gems[gem]||{}).filter(([,n])=>n>0).map(([level,n])=>`<div class="row"><span><b>Lv.${level}</b> · ${n}개</span>${button('장착','equip_gem',{gem,level})}${Number(level)<10?button('2개 합성','synthesize',{gem,level}):''}</div>`).join('')+`</section>`).join('');
+  const gemOffsets=new Map([...document.querySelectorAll('.gem-levels')].map(row=>[row.dataset.gem,row.scrollLeft]));
+  $('#gems').innerHTML=Object.keys(labels).map(gem=>{
+    const equipped=inv.equipped_gems[gem]||0;
+    const levels=Object.entries(inv.gems[gem]||{}).filter(([level,count])=>count>0||Number(level)===equipped);
+    const cards=levels.map(([level,count])=>{
+      const selected=Number(level)===equipped,canSynthesize=Number(level)<10&&count-(selected?1:0)>=2;
+      return `<div class="gem-level"><button type="button" class="gem-equip" data-action="equip_gem" data-gem="${gem}" data-level="${level}" aria-pressed="${selected}" aria-label="${gemNames[gem]} Lv.${level} ${selected?'장착 중':'장착'}" ${selected?'disabled data-blocked="true"':''}>Lv.${level}</button><small>보유 ${count}개</small>${canSynthesize?button('2개 합성','synthesize',{gem,level}):''}</div>`;
+    }).join('');
+    return `<section class="gem-group"><h4>${statIcon(gem,true)}<span>${gemNames[gem]}</span><b aria-label="장착 보석 레벨">Lv.${equipped}</b>${equipped?button('해제','unequip_gem',{gem}):''}</h4>${cards?`<div class="gem-levels" data-gem="${gem}" role="group" aria-label="${gemNames[gem]} 보유 레벨">${cards}</div>`:'<p class="gem-empty">보유한 보석이 없어요.</p>'}</section>`;
+  }).join('');
+  document.querySelectorAll('.gem-levels').forEach(row=>row.scrollLeft=gemOffsets.get(row.dataset.gem)||0);
   $('#items').innerHTML=Object.entries(inv.items).filter(([,n])=>n>0).map(([item,n])=>`<div class="row"><span>${esc(catalog.items[item]?.name||item)} × ${n}</span>${catalog.items[item]?.exp || ['holy_water','primordial_heart'].includes(item)?button('사용','use',{item}):''}</div>`).join('');
   $('#engravings').innerHTML=['relic','armor'].map(kind=>`<h3>${kind==='relic'?'보물':'방어구'}</h3>`+inv[`${kind}_engravings`].map((row,slot)=>`<div class="row"><span>${row?esc(`${grades[row.grade]} · ${labels[row.option]||effectLabels[row.option]||row.option} +${row.value}${labels[row.option]?'':'%'}`):'빈 슬롯'}</span>${button(inv[`${kind}_engraving_locks`][slot]?'잠금 해제':'잠금','lock',{kind,slot})}${button('재설정','reroll',{kind,slot})}</div>`).join('')).join('');
   $('#growth-gate').textContent=player.level_cap[1];
@@ -87,11 +97,23 @@ function renderRaids(){
   if(!player)return;
   const tier=Number($('#raid-tier').value)||1, cleared=player.pet.raid_clears[String(tier)]||[];
   $('#raid-gates').innerHTML=`<strong>입장 레벨 Lv.${catalog.raid_levels[tier]}</strong> · 내 레벨 Lv.${player.pet.level} · 토벌 ${cleared.length}/${tier===5?5:4}<br>${esc(player.level_cap[1])}`;
+  if(activeRaid){$('#raid-bosses').innerHTML='<p>진행 중인 레이드를 완료하거나 포기한 뒤 새 도전에 입장할 수 있어요.</p>';return;}
   $('#raid-bosses').innerHTML=Object.entries(catalog.bosses).filter(([id])=>Number(id)!==5||tier===5).map(([boss,b])=>`<div class="tile"><img class="boss-art" loading="lazy" src="/assets/game-assets/bosses/${['ancient_ent','crystal_dragon','ifrit','nebula','omega'][Number(boss)-1]}.webp" alt="${esc(b.name)}"><h3>${esc(b.emoji)} ${esc(b.name)} ${cleared.includes(Number(boss))?'✓':''}</h3><p>${esc(b.desc)}</p><p>기본 기력 ${b.energy_cost}</p>${button('혼자 도전','raid',{boss,tier})}${button('협동 방 만들기','raid_create',{boss,tier})}</div>`).join('');
+}
+function renderActiveRaid(){
+  const box=$('#raid-active');
+  if(!activeRaid){box.innerHTML='';return;}
+  const room=activeRaid,state=room.state,index=room.owners.indexOf(player.account),mine=state.fighters[index],turn=state.turns+1;
+  const fighters=state.fighters.map(f=>`<div class="raid-fighter"><span>${esc(f.name)}</span><b>${Math.max(0,f.hp).toLocaleString()} / ${f.max_hp.toLocaleString()} HP</b><progress max="${f.max_hp}" value="${Math.max(0,f.hp)}"></progress></div>`).join('');
+  const choices=Object.entries(player.skills).map(([key,skill])=>{
+    const cooldown=Math.max(0,(mine.cooldowns[key]||0)-1),blocked=room.chosen||mine.hp<=0||cooldown>0||(key==='ultimate'&&turn<3);
+    return `<button class="raid-skill" data-action="raid_turn" data-room="${esc(room.id)}" data-skill="${key}" ${blocked?'disabled data-blocked="true"':''}><strong>${esc(skill.name)}</strong><small>${cooldown?`쿨타임 ${cooldown}턴`:key==='ultimate'&&turn<3?'3턴부터 사용':esc(skill.desc)}</small></button>`;
+  }).join('');
+  box.innerHTML=`<section class="raid-active"><h3>${esc(catalog.bosses[room.boss].name)} · ${esc(catalog.raid_difficulties[room.tier].name)} · ${turn}턴</h3><div class="raid-boss-hp"><span>보스 HP</span><b>${state.boss_hp.toLocaleString()} / ${state.boss_max_hp.toLocaleString()}</b><progress max="${state.boss_max_hp}" value="${state.boss_hp}"></progress></div>${fighters}<p>${room.chosen?'스킬 선택 완료 · 상대 테이머를 기다리는 중':mine.hp<=0?'신수가 쓰러졌어요. 동료의 전투를 지켜보세요.':'사용할 스킬을 직접 선택해 주세요.'}</p><div class="raid-skills">${choices}</div><pre class="raid-live-log">${esc(state.log.slice(-5).join('\n'))}</pre>${button('레이드 포기 · 입장 기력 소모','raid_retreat',{room:room.id})}</section>`;
 }
 async function loadRooms(){
   if(!player)return;
-  try{const rooms=await api('/api/raids');$('#raid-rooms').innerHTML=rooms.filter(r=>r.status==='waiting' && r.created>Date.now()/1000-900).map(r=>`<div class="row"><span>${esc(catalog.bosses[r.boss].name)} · ${esc(catalog.raid_difficulties[r.tier].name)}</span>${button(r.host===player.account?'방 취소':'참가하여 전투 시작',r.host===player.account?'raid_cancel':'raid_join',{room:r.id})}</div>`).join('')||'<p>대기 중인 방이 없습니다.</p>';}catch(error){$('#notice').textContent=error.message;}
+  try{const rooms=await api('/api/raids');activeRaid=rooms.find(r=>r.status==='active')||null;renderActiveRaid();renderRaids();$('#raid-rooms').innerHTML=rooms.filter(r=>r.status==='waiting' && r.created>Date.now()/1000-900).map(r=>`<div class="row"><span>${esc(catalog.bosses[r.boss].name)} · ${esc(catalog.raid_difficulties[r.tier].name)}</span>${button(r.host===player.account?'방 취소':'참가해 스킬 선택',r.host===player.account?'raid_cancel':'raid_join',{room:r.id})}</div>`).join('')||'<p>대기 중인 방이 없습니다.</p>';}catch(error){$('#notice').textContent=error.message;}
 }
 async function enter(){
   [player,catalog]=await Promise.all([api('/api/me'),api('/api/catalog')]);
@@ -145,6 +167,7 @@ document.addEventListener('click',event=>{
   const data={...target.dataset};for(const key of ['slot','level','index','dungeon','boss','tier','times'])if(key in data)data[key]=Number(data[key]);
   if(data.action==='pet_reroll'&&!confirm('새 신수를 무료로 다시 뽑을까요? Lv.1에서 최대 3회 가능합니다.'))return;
   if(data.action==='dismantle_relic'&&!confirm('이 보물을 분해하고 종족 정수를 얻을까요?'))return;
+  if(data.action==='raid_retreat'&&!confirm('레이드를 포기하면 참여한 신수의 입장 기력이 소모됩니다. 포기할까요?'))return;
   if(data.action==='dungeon')data.tier=Number($('#difficulty').value);
   if(data.action==='reroll')data.tier=Number($('#stone-tier').value);
   action(data);

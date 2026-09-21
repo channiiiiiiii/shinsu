@@ -41,7 +41,7 @@ class Signup(BaseModel):
 class Command(BaseModel):
     action: Literal["feed","clean","sleep","train","pet","cure","refresh","rename","pet_reroll","dungeon",
                     "reroll","lock","synthesize","equip_gem","unequip_gem","equip_armor","equip_relic","buy","use",
-                    "raid","raid_create","raid_join","raid_cancel","potential","enhance_relic","enhance_armor",
+                    "raid","raid_create","raid_join","raid_cancel","raid_turn","raid_retreat","potential","enhance_relic","enhance_armor",
                     "ascend_armor","craft_relic","dismantle_relic","reincarnate"]
     request_id: UUID
     kind: Literal["relic","armor"] = "armor"
@@ -56,6 +56,7 @@ class Command(BaseModel):
     boss: int = Field(default=1, ge=1, le=5)
     times: int = Field(default=1, ge=1, le=10)
     room: str = Field(default="", max_length=80)
+    skill: Literal["basic1","basic2","unique","ultimate"] = "basic1"
     confirmation: str = Field(default="", max_length=20)
 
 
@@ -179,8 +180,7 @@ def create_app(path=None, accounts=None, secure=None):
 
     @app.get("/api/raids")
     def raids(request: Request):
-        identity(request)
-        return app.state.db.raid_rooms()
+        return app.state.db.raid_rooms(identity(request))
 
     @app.get("/api/catalog")
     def get_catalog(request: Request):

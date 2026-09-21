@@ -100,15 +100,16 @@ def reward(pet, inv, boss, tier):
     return f"{pet.name}: +{gold:,}G / +{exp:,} EXP\n" + " · ".join(logs)
 
 
-def battle(party, boss, tier):
+def battle(party, boss, tier, choices=None, max_turns=None, rng=None):
     """두 참가자가 같은 보스 HP를 공격한다. 계산 중 외부 입출력은 없다."""
+    rng = rng or random
     for pet, inv in party:
         check_entry(pet, boss, tier)
     base = BOSS_DATABASE[boss]
     target = deepcopy(BOSS_STAT_TABLE[tier][boss])
     max_hp = hp = target["hp"]
     fighters, logs = [], []
-    for pet, inv in party:
+    for index, (pet, inv) in enumerate(party):
         pet.consume_energy(base["energy_cost"], "raid")
         pet.hunger = max(0, pet.hunger - 20)
         pet.cleanliness = max(0, pet.cleanliness - 20)
@@ -121,7 +122,7 @@ def battle(party, boss, tier):
         if pet.species_key == "기린":
             for stat in ("max_hp", "current_hp", "atk", "def", "spd"):
                 stats[stat] = int(stats[stat] * (1.08 if stats.get("relic_is_10") else 1.03))
-        fighters.append({"pet": pet, "inv": inv, "stats": stats, "hp": stats["current_hp"], "shield": 0,
+        fighters.append({"index": index, "pet": pet, "inv": inv, "stats": stats, "hp": stats["current_hp"], "shield": 0,
                          "skills": skills(pet), "effects": fx, "cooldowns": {}, "buffs": {}, "debuffs": {},
                          "revived": False, "saved": False, "passive_healed": False, "stunned": False, "burn": 0})
     revived, boss_shield, boss_reflect = False, 0, 0
@@ -129,6 +130,14 @@ def battle(party, boss, tier):
     boss_stunned, boss_burn, stacks, warning, ult_used = False, 0, 0, False, False
     boss_cds = {"skill_a": 0, "skill_b": 0, "ultimate": 0}
     patterns = BOSS_SKILLS_DATABASE[boss]
+    def progress(turn):
+        return {"ongoing": True, "boss": boss, "tier": tier, "turns": turn,
+                "boss_hp": hp, "boss_max_hp": max_hp,
+                "fighters": [{"name": f["pet"].name, "hp": max(0, f["hp"]), "max_hp": f["stats"]["max_hp"],
+                              "cooldowns": f["cooldowns"], "stunned": f["stunned"]} for f in fighters],
+                "log": logs[-12:]}
+    if max_turns == 0:
+        return progress(0)
     # 잡지식: 턴 상한은 회복형 보스와 탱커의 무한 줄다리기를 막아준다.
     for turn in range(1, 101):
         if hp <= 0 or not any(f["hp"] > 0 for f in fighters):
@@ -164,7 +173,9 @@ def battle(party, boss, tier):
                 f["stunned"] = False
                 logs.append(f"{turn}턴 · {pet.name} 행동 불가")
                 continue
-            kind = "ultimate" if turn >= 3 and not f["cooldowns"].get("ultimate") else "unique" if not f["cooldowns"].get("unique") else "basic2" if turn % 2 == 0 else "basic1"
+            kind = choices[turn-1][f["index"]] if choices is not None else "ultimate" if turn >= 3 and not f["cooldowns"].get("ultimate") else "unique" if not f["cooldowns"].get("unique") else "basic2" if turn % 2 == 0 else "basic1"
+            if kind not in f["skills"] or f["cooldowns"].get(kind, 0) or (kind == "ultimate" and turn < 3):
+                raise ValueError("사용할 수 없는 스킬입니다. 쿨타임을 확인해 주세요.")
             sk = f["skills"][kind]
             f["cooldowns"][kind] = sk.get("cooldown", 0)
             duration = sk.get("duration", 2)
@@ -180,13 +191,13 @@ def battle(party, boss, tier):
                     debuff = max(debuff, sk.get("debuff_enemy_def", 0))
                 if debuff:
                     boss_debuffs[stat] = (debuff, duration)
-            if random.random() < sk.get("debuff_atk_chance", 0):
+            if rng.random() < sk.get("debuff_atk_chance", 0):
                 boss_debuffs["atk"] = (0.1, 2)
-            if random.random() < sk.get("slow_chance", 0):
+            if rng.random() < sk.get("slow_chance", 0):
                 boss_debuffs["spd"] = (0.15, 2)
-            if random.random() < sk.get("stun_chance", 0):
+            if rng.random() < sk.get("stun_chance", 0):
                 boss_stunned = True
-            if random.random() < sk.get("burn_chance", 0):
+            if rng.random() < sk.get("burn_chance", 0):
                 boss_burn = duration
             for stat in ("atk", "def", "spd"):
                 value = sk.get("buff_" + stat, sk.get("buff_all", 0))
@@ -238,21 +249,21 @@ def battle(party, boss, tier):
             extra = fx.get("extra_hit", 0) + sk.get("extra_hit_chance", 0) + sk.get("double_hit_chance", 0) + f["buffs"].get("double", (0,0))[0]
             if st.get("effect") == "double_strike":
                 extra += min(0.4, speed/(speed+900))
-            hits = sk.get("hits", 1) + int(random.random() < min(1, extra))
+            hits = sk.get("hits", 1) + int(rng.random() < min(1, extra))
             if sk.get("speed_diff_hit") and speed > enemy_speed * (1+sk["speed_diff_hit"]):
                 hits += 1
             damage = 0
             for hit_index in range(hits):
-                critical = random.random() < min(0.7, st["crit"] / (st["crit"] + 900) + sk.get("crit_bonus", 0) + f["buffs"].get("crit", (0,0))[0] + (0.15 if st.get("effect")=="crit" else 0))
+                critical = rng.random() < min(0.7, st["crit"] / (st["crit"] + 900) + sk.get("crit_bonus", 0) + f["buffs"].get("crit", (0,0))[0] + (0.15 if st.get("effect")=="crit" else 0))
                 mult = 2 + fx.get("crit_dmg", 0) + (0.2 if st.get("personality_trait")=="calm_crit" else 0) if critical else 1
                 enemy_def = target["def"] * (1+boss_buffs.get("def",(0,0))[0]) * (1-boss_debuffs.get("def",(0,0))[0])
                 penetration = min(0.8, max(sk.get("pen_def", 0), f["buffs"].get("pen_def",(0,0))[0]))
-                hit = max(0, int((attack * sk.get("atk_ratio", 0) - enemy_def * 0.35 * (1 - penetration)) * mult * (1 + bonus) * random.uniform(0.9, 1.1)))
+                hit = max(0, int((attack * sk.get("atk_ratio", 0) - enemy_def * 0.35 * (1 - penetration)) * mult * (1 + bonus) * rng.uniform(0.9, 1.1)))
                 if speed > enemy_speed and hit_index == hits-1:
                     hit = int(hit * (1+sk.get("spd_finisher",0)))
                 if critical:
                     hit += int(attack * sk.get("crit_extra_atk", 0))
-                    if pet.species_key == "호랑이" and st.get("relic_is_10") and random.random()<0.15:
+                    if pet.species_key == "호랑이" and st.get("relic_is_10") and rng.random()<0.15:
                         hit = int(hit*1.5)
                 if boss == 1 and tier >= 4 and hit < max_hp * 0.01:
                     hit = 0
@@ -281,7 +292,7 @@ def battle(party, boss, tier):
             else:
                 break
         boss_cds = {k: max(0, v - 1) for k, v in boss_cds.items()}
-        move = choose_boss_action(boss, tier, hp/max_hp, turn, boss_cds["skill_a"], boss_cds["skill_b"], ult_used, warning, {"hellfire_stacks":stacks})
+        move = choose_boss_action(boss, tier, hp/max_hp, turn, boss_cds["skill_a"], boss_cds["skill_b"], ult_used, warning, {"hellfire_stacks":stacks}, rng=rng)
         if boss_stunned:
             boss_stunned = False
             move = "stunned"
@@ -311,26 +322,26 @@ def battle(party, boss, tier):
         alive = [f for f in fighters if f["hp"] > 0]
         if not alive:
             break
-        victims = [] if move in ("stunned","warning_ult") else alive if move == "ultimate" or pattern.get("burn_turns") else [random.choice(alive)]
+        victims = [] if move in ("stunned","warning_ult") else alive if move == "ultimate" or pattern.get("burn_turns") else [rng.choice(alive)]
         for f in victims:
             st, fx = f["stats"], f["effects"]
             resist = min(0.9, st.get("armor_resist",0)+f["buffs"].get("resist",(0,0))[0])
-            if random.random() < pattern.get("stun_chance_map",{}).get(tier,0)*(1-resist):
+            if rng.random() < pattern.get("stun_chance_map",{}).get(tier,0)*(1-resist):
                 f["stunned"] = True
             for stat, value in (("spd", pattern.get("slow_rate",0)),("def",pattern.get("def_shred",0))):
                 chance = pattern.get("slow_chance",1) if stat=="spd" else pattern.get("shred_chance",1)
-                if value and random.random()<chance*(1-resist):
+                if value and rng.random()<chance*(1-resist):
                     f["debuffs"][stat] = (value, pattern.get("slow_turns",pattern.get("shred_turns",2)))
             for stat in ("atk","def","spd"):
                 value = pattern.get("all_stat_debuff",pattern.get("debuff_val",0))
                 if value:
                     f["debuffs"][stat] = (value*(1-resist),pattern.get("duration",2))
-            if pattern.get("burn_turns") or random.random()<pattern.get("burn_chance",0)*(1-resist):
+            if pattern.get("burn_turns") or rng.random()<pattern.get("burn_chance",0)*(1-resist):
                 f["burn"] = pattern.get("burn_turns",2)
-            if tier==5 and boss==4 and hp/max_hp<=0.3 and random.random()<0.2:
+            if tier==5 and boss==4 and hp/max_hp<=0.3 and rng.random()<0.2:
                 f["cooldowns"] = {k:v+1 for k,v in f["cooldowns"].items()}
             dodge = f["buffs"].get("dodge",(0,0))[0] + (0.1 if st.get("personality_trait")=="dodge_boost" else 0)
-            if random.random()<dodge:
+            if rng.random()<dodge:
                 logs.append(f"{f['pet'].name} 회피!")
                 continue
             reduction = fx.get("dmg_red", 0) + fx.get("boss_dmg_red", 0) + st.get("armor_dmg_red", 0) + f["buffs"].get("reduction", (0, 0))[0]
@@ -342,7 +353,7 @@ def battle(party, boss, tier):
                 reduction += 0.05
             if f["pet"].species_key=="사자" and st.get("relic_is_10") and f["hp"]<=st["max_hp"]*0.5:
                 reduction += 0.1
-            critical = random.random() < target.get("crit", 100) / (target.get("crit", 100) + 900)
+            critical = rng.random() < target.get("crit", 100) / (target.get("crit", 100) + 900)
             attack = target["atk"]*(1+boss_buffs.get("atk",(0,0))[0])*(1-boss_debuffs.get("atk",(0,0))[0])
             if boss==3:
                 attack *= 1+stacks*pattern.get("bonus_per_stack_map",{}).get(tier,0.03)
@@ -353,12 +364,12 @@ def battle(party, boss, tier):
                 defence *= 1.2
             raw = max(0, attack * pattern.get("ratio", 0) - defence * 0.35 * (1-pattern.get("def_ignore",0)))
             damage = int(raw * (2 * (1 - fx.get("crit_dmg_red", 0)) if critical else 1) * (1 - min(0.85, reduction)))
-            if random.random() < fx.get("half_dmg_chance", 0):
+            if rng.random() < fx.get("half_dmg_chance", 0):
                 damage //= 2
-            if st.get("personality_trait")=="indomitable" and random.random()<0.2:
+            if st.get("personality_trait")=="indomitable" and rng.random()<0.2:
                 damage //= 2
             damage = int(damage*(1+f["buffs"].get("penalty",(0,0))[0]))
-            if pattern.get("extra_turn") or random.random()<pattern.get("extra_turn_chance_map",{}).get(tier,0):
+            if pattern.get("extra_turn") or rng.random()<pattern.get("extra_turn_chance_map",{}).get(tier,0):
                 damage += int(max(5,attack-defence*0.35)*(1-min(0.85,reduction)))
             absorbed = min(f["shield"], damage)
             f["shield"] -= absorbed
@@ -385,6 +396,8 @@ def battle(party, boss, tier):
                     regen += 0.08
                 if f["hp"]>0:
                     f["hp"] = min(st["max_hp"], f["hp"] + int(st["max_hp"] * regen * (1 + fx.get("heal_bonus", 0))))
+        if max_turns is not None and turn >= max_turns and hp > 0 and any(f["hp"] > 0 for f in fighters):
+            return progress(turn)
     won = hp <= 0 and any(f["hp"] > 0 for f in fighters)
     summaries = []
     for f in fighters:
@@ -399,7 +412,7 @@ def battle(party, boss, tier):
             if tier >= 3 and f["hp"] <= 0:
                 if inv.items.get("life_gem", 0):
                     inv.remove_item("life_gem", 1)
-                elif random.random() < pet.calculate_injury_rate(tier)[0]:
+                elif rng.random() < pet.calculate_injury_rate(tier)[0]:
                     pet.is_critically_injured = True
                     pet.health = 1
             summaries.append(f"{pet.name}: 패배, 건강 {pet.health} / 기력 {pet.stamina}")
