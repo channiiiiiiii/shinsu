@@ -46,6 +46,7 @@ function statOverview(){
   return `<div class="combat-power">전투력 <strong>${s.combat_power.toLocaleString()}</strong></div><div class="stat-values">${values}</div>`;
 }
 function render(){
+  $('#diet-link').hidden=player.account!=='player2';
   const pet=player.pet, inv=player.inventory;
   $('#greeting').textContent=`${player.nickname} 테이머의 정원`;
   const portrait=$('#pet-art'), slug=speciesAssets[pet.species_key], stage=Math.max(1,Math.min(4,Number(pet.stage)||1));

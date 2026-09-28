@@ -94,7 +94,7 @@ def create_app(path=None, accounts=None, secure=None):
 
     @app.middleware("http")
     async def security(request, call_next):
-        if request.method == "POST" and request.headers.get("X-Shinsu-Client") != "web":
+        if request.method in ("POST", "PATCH", "PUT", "DELETE") and request.headers.get("X-Shinsu-Client") != "web":
             return JSONResponse({"detail":"게임 화면에서 요청해 주세요."},status_code=403)
         response = await call_next(request)
         response.headers["Cache-Control"] = "no-store" if request.url.path.startswith("/api") else "no-cache"
@@ -199,6 +199,8 @@ def create_app(path=None, accounts=None, secure=None):
         nickname = registered[0] if registered else app.state.accounts[user]["name"]
         return {"player":{**view(result["data"],nickname), "account": user},"message":result["message"]}
 
+    from shisu.api.diet import install
+    install(app, identity, ROOT)
     app.mount("/assets",StaticFiles(directory=ROOT / "web"),name="assets")
 
     @app.get("/",include_in_schema=False)
