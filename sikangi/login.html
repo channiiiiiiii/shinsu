@@ -17,10 +17,10 @@
     <h1>오늘의 공부를<br>이어가 볼까요?</h1>
     <p class="intro">기존 계정으로 로그인하면<br>학습 기록을 이어서 볼 수 있어요.</p>
     <form id="login-form">
-      <label for="account">누가 공부하나요?</label>
-      <select id="account" name="account" autocomplete="username"><option value="player1">여니 · 학습 사용자</option><option value="player2">차니 · 관리자</option></select>
-      <label for="code">비밀번호 또는 접속 코드</label>
-      <input id="code" name="code" type="password" autocomplete="current-password" required maxlength="256" placeholder="기존 계정의 비밀번호를 입력하세요">
+      <label for="account">아이디</label>
+      <input id="account" name="account" type="text" autocomplete="username" required maxlength="80" placeholder="아이디 또는 기존 닉네임" autocapitalize="none" spellcheck="false">
+      <label for="code">비밀번호</label>
+      <input id="code" name="code" type="password" autocomplete="current-password" required maxlength="256" placeholder="비밀번호를 입력하세요">
       <p id="login-error" role="alert" aria-live="polite"></p>
       <button type="submit" id="login-submit">로그인하고 학습 시작하기 →</button>
     </form>

@@ -90,6 +90,10 @@ def test_login_screen_and_return_to_study(tmp_path):
             assert 'id="login-form"' in screen.text
             assert '/sikangi/login.css' in screen.text
             assert '/sikangi/login.js' in screen.text
+            assert '<select' not in screen.text
+            assert 'name="account" type="text"' in screen.text
+            assert '여니 · 학습 사용자' not in screen.text
+            assert '차니 · 관리자' not in screen.text
         assert client.get('/sikangi/login.css').status_code == 200
         assert client.get('/sikangi/login.js').status_code == 200
         assert client.get('/api/sikangi/state').status_code == 401
@@ -103,3 +107,35 @@ def test_login_screen_and_return_to_study(tmp_path):
         assert client.get('/api/sikangi/me').json()['role'] == 'learner'
         client.post('/api/logout', headers=HEADERS)
         assert client.get('/sikangi', follow_redirects=False).status_code == 303
+
+
+def test_direct_id_and_nickname_login(tmp_path):
+    with TestClient(create_app(tmp_path / 'game.db', ACCOUNTS, False)) as client:
+        for identifier, code, account, role in [
+            ('player1', '1' * 32, 'player1', 'learner'),
+            (' 여니 ', '1' * 32, 'player1', 'learner'),
+            ('차니', '2' * 32, 'player2', 'admin'),
+        ]:
+            response = client.post('/api/login', json={'account': identifier, 'code': code}, headers=HEADERS)
+            assert response.status_code == 200
+            assert client.get('/api/sikangi/me').json()['account'] == account
+            assert client.get('/api/sikangi/me').json()['role'] == role
+        for identifier in ['알 수 없는 아이디', '   ', 'admin']:
+            assert client.post('/api/login', json={'account': identifier, 'code': '2' * 32}, headers=HEADERS).status_code == 401
+        app = client.app
+        app.state.db.register('player2', '새 닉네임', '등록한비밀번호123')
+        assert client.post('/api/login', json={'account': '새 닉네임', 'code': '등록한비밀번호123'}, headers=HEADERS).status_code == 200
+        assert client.get('/api/sikangi/me').json()['role'] == 'admin'
+        assert client.post('/api/login', json={'account': '새 닉네임', 'code': '2' * 32}, headers=HEADERS).status_code == 401
+        assert client.post('/api/login', json={'account': '차니', 'code': '등록한비밀번호123'}, headers=HEADERS).status_code == 401
+        assert client.post('/api/login', json={'account': 'player2', 'code': '등록한비밀번호123'}, headers=HEADERS).status_code == 200
+
+
+def test_ambiguous_nickname_and_unknown_id_rate_limit(tmp_path):
+    accounts = {key: {**value, 'name': '같은 이름'} for key, value in ACCOUNTS.items()}
+    with TestClient(create_app(tmp_path / 'game.db', accounts, False)) as client:
+        assert client.post('/api/login', json={'account': '같은 이름', 'code': '2' * 32}, headers=HEADERS).status_code == 401
+        login(client, 'player1')
+        for _ in range(18):
+            assert client.post('/api/login', json={'account': '없는 아이디', 'code': '잘못된 암호'}, headers=HEADERS).status_code == 401
+        assert client.post('/api/login', json={'account': '없는 아이디', 'code': '잘못된 암호'}, headers=HEADERS).status_code == 429

@@ -28,7 +28,7 @@ mimetypes.add_type("image/webp", ".webp")
 
 
 class Login(BaseModel):
-    account: Literal["player1", "player2"]
+    account: str = Field(min_length=1, max_length=80)
     code: str = Field(min_length=1, max_length=256)
 
 
@@ -157,12 +157,21 @@ def create_app(path=None, accounts=None, secure=None):
             if len(attempts) >= 20:
                 raise HTTPException(429,"잠시 기다린 후 로그인해 주세요.")
             attempts.append(now)
-        account = app.state.accounts[body.account]
-        registered = app.state.db.registered_account(body.account)
-        valid = app.state.db.verify_password(body.account, body.code) if registered else secrets.compare_digest(body.code.encode(), account["code"].encode())
+        identifier = body.account.strip()
+        user = identifier if identifier in app.state.accounts else None
+        if user is None:
+            names = {key: value['name'] for key, value in app.state.accounts.items()}
+            names.update(app.state.db.registered_names())
+            matches = [key for key, name in names.items() if name == identifier]
+            if len(matches) != 1:
+                raise HTTPException(401,"계정 또는 접속 코드를 확인해 주세요.")
+            user = matches[0]
+        account = app.state.accounts[user]
+        registered = app.state.db.registered_account(user)
+        valid = app.state.db.verify_password(user, body.code) if registered else secrets.compare_digest(body.code.encode(), account["code"].encode())
         if not valid:
             raise HTTPException(401,"계정 또는 접속 코드를 확인해 주세요.")
-        token = app.state.db.session(body.account)
+        token = app.state.db.session(user)
         response.set_cookie("shinsu_session",token,httponly=True,secure=cookie_secure,samesite="strict",max_age=604800)
         return {"nickname": registered[0] if registered else account["name"]}
 
