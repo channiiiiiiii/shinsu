@@ -201,6 +201,8 @@ def create_app(path=None, accounts=None, secure=None):
 
     from shisu.api.diet import install
     install(app, identity, ROOT)
+    from shisu.api.sikangi import install as install_sikangi
+    install_sikangi(app, identity, ROOT)
     app.mount("/assets",StaticFiles(directory=ROOT / "web"),name="assets")
 
     @app.get("/",include_in_schema=False)
