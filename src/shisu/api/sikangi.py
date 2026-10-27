@@ -68,6 +68,12 @@ class ExamResult(BaseModel):
     elapsed: int = Field(ge=0, le=7200)
 
 
+class DailyStats(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    total: int = Field(ge=0, le=1000000)
+    correct: int = Field(ge=0, le=1000000)
+
+
 class StudyState(BaseModel):
     model_config = ConfigDict(extra='forbid')
     read: list[ConceptId] = Field(default_factory=list, max_length=100)
@@ -76,6 +82,7 @@ class StudyState(BaseModel):
     results: dict[QuestionId, StrictBool] = Field(default_factory=dict, max_length=4000)
     history: list[Attempt] = Field(default_factory=list, max_length=1000)
     daily: dict[Day, Annotated[int, Field(ge=0, le=1000000)]] = Field(default_factory=dict, max_length=10000)
+    daily_stats: dict[Day, DailyStats] = Field(default_factory=dict, max_length=10000)
     goal: int = Field(default=5, ge=1, le=50)
     target: date | None = None
     session: Session | None = None
@@ -268,6 +275,8 @@ def install(app, identity, root):
     def put_state(request: Request, body: StudyState):
         account = identity(request)
         refresh_bank()
+        if any(row.correct > row.total for row in body.daily_stats.values()):
+            raise HTTPException(422, '일별 정답 수는 풀이 수보다 클 수 없습니다.')
         if body.session and (body.session.index >= len(body.session.ids) or body.session.score > len(body.session.ids)):
             raise HTTPException(422, '풀이 진행 상태를 확인해 주세요.')
         if not set(body.read + body.saved + list(body.notes)) <= concept_ids:

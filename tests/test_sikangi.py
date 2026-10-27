@@ -205,3 +205,28 @@ def test_private_bank_upload_exam_storage_and_restart(tmp_path):
         login(client, 'player1')
         assert client.get('/api/sikangi/bank').json()['registered'] is True
         assert client.get('/api/sikangi/state').json()['state']['responses']['w2025-3-001'] == '직접 작성 답안'
+
+
+def test_daily_statistics_survive_history_limit_and_admin_read(tmp_path):
+    """일별 정답률은 최근 풀이 목록 제한으로 잘리지 않아야 한다."""
+    app = create_app(tmp_path / 'game.db', ACCOUNTS, False)
+    record = {
+        'history': [{'id': 'q1', 'correct': True, 'time': 1793000000000}],
+        'daily': {'2026-10-27': 1200},
+        'daily_stats': {'2026-10-27': {'total': 1200, 'correct': 900}},
+        'session': None, 'exam_session': None,
+    }
+    with TestClient(app) as client:
+        login(client, 'player1')
+        assert client.put('/api/sikangi/state', json=record, headers=HEADERS).status_code == 200
+        invalid = {**record, 'daily_stats': {'2026-10-27': {'total': 1, 'correct': 2}}}
+        assert client.put('/api/sikangi/state', json=invalid, headers=HEADERS).status_code == 422
+        assert client.get('/api/sikangi/admin/learner').status_code == 403
+        login(client, 'player2')
+        saved = client.get('/api/sikangi/admin/learner').json()['state']
+        assert saved['daily_stats']['2026-10-27'] == {'total': 1200, 'correct': 900}
+        assert len(saved['history']) == 1
+        assert saved['session'] is None and saved['exam_session'] is None
+    with TestClient(create_app(tmp_path / 'game.db', ACCOUNTS, False)) as client:
+        login(client, 'player2')
+        assert client.get('/api/sikangi/admin/learner').json()['state']['daily_stats'] == record['daily_stats']

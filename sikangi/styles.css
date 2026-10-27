@@ -17,3 +17,5 @@ progress.progress{display:block;width:100%;border:0;appearance:none;background:#
 
 /* 수식 원문은 가로 비율을 유지하고 별도 창에서 확대할 수 있어요. */
 .source-image figcaption{margin-top:8px;line-height:1.8}.source-image a{color:var(--green);text-decoration:underline}.source-image img{object-fit:contain}.explanation details{margin-top:12px}
+
+.admin-daily{margin:22px 0 30px}.admin-daily h3 small{font-size:10px;font-weight:400;color:var(--muted)}.admin-daily table{width:100%;border-collapse:collapse;font-size:12px;margin:13px 0}.admin-daily th,.admin-daily td{padding:9px 7px;border-bottom:1px solid var(--line);text-align:right}.admin-daily th:first-child{text-align:left}.admin-daily thead{color:var(--muted)}.admin-daily .today-row{background:#edf5e7;color:var(--green)}
