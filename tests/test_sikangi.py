@@ -1,5 +1,8 @@
 """학습 기록의 계정 격리와 관리자 읽기 권한을 검증한다."""
 from fastapi.testclient import TestClient
+import io
+import json
+import zipfile
 
 from shisu.api.main import create_app
 
@@ -139,3 +142,66 @@ def test_ambiguous_nickname_and_unknown_id_rate_limit(tmp_path):
         for _ in range(18):
             assert client.post('/api/login', json={'account': '없는 아이디', 'code': '잘못된 암호'}, headers=HEADERS).status_code == 401
         assert client.post('/api/login', json={'account': '없는 아이디', 'code': '잘못된 암호'}, headers=HEADERS).status_code == 429
+
+
+def test_private_bank_upload_exam_storage_and_restart(tmp_path):
+    subjects = ['safety', 'chemistry', 'process', 'micro']
+    questions = [{
+        'id': f'p2025-3-{number:03d}', 's': subjects[(number-1)//20], 'l': 'l1',
+        'title': f'업로드 검증용 독립 작성 문항 {number}', 'choices': ['가', '나', '다', '라'],
+        'answer': number % 4, 'explain': '검증용 해설', 'origin': 'past',
+        'year': 2025, 'round': 3, 'number': number, 'pdfPage': 4,
+        'source': '테스트 전용 합성 자료', 'current': True,
+        'image': f'/sikangi/exam-assets/p2025-3-{number:03d}.webp',
+    } for number in range(1, 81)]
+    written = {**questions[0], 'id': 'w2025-3-001', 'type': 'written', 'choices': [], 'answer': None,
+               'modelAnswer': '검증용 모범답안', 'image': '/sikangi/exam-assets/w2025-3-001.webp'}
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, 'w') as archive:
+        archive.writestr('bank.json', json.dumps({'questions': questions + [written]}))
+        for question in questions + [written]:
+            archive.writestr(question['image'].removeprefix('/sikangi/'), b'RIFF\x04\x00\x00\x00WEBP')
+    app = create_app(tmp_path / 'game.db', ACCOUNTS, False)
+    with TestClient(app) as client:
+        assert client.get('/api/sikangi/bank').status_code == 401
+        login(client, 'player1')
+        assert client.get('/api/sikangi/bank').json()['registered'] is False
+        assert client.put('/api/sikangi/admin/content', content=package.getvalue(), headers=HEADERS).status_code == 403
+        login(client, 'player2')
+        assert client.put('/api/sikangi/admin/content', content=package.getvalue()).status_code == 403
+        response = client.put('/api/sikangi/admin/content', content=package.getvalue(), headers=HEADERS)
+        assert response.status_code == 200, response.text
+        assert response.json() == {'imported': 81, 'choice': 80, 'written': 1}
+        assert len(client.get('/api/sikangi/bank').json()['questions']) == 81
+        ids = [question['id'] for question in questions]
+        answers = {question['id']: question['answer'] for question in questions if question['s'] != 'safety'}
+        result = {'id': 'e123', 'ids': ids, 'answers': answers, 'scores': {}, 'average': 100,
+                  'passed': True, 'time': 1793000000000, 'origin': 'past', 'elapsed': 100}
+        state = {'read': ['l1'], 'saved_questions': [ids[0]], 'qnotes': {ids[0]: '계산 과정 메모'},
+                 'responses': {'w2025-3-001': '직접 작성 답안'}, 'grades': {'w2025-3-001': 'partial'},
+                 'session': {'ids': ids[:20], 'index': 2, 'score': 0, 'hideChoices': True}, 'exams': [result],
+                 'exam_session': {'ids': ids, 'answers': answers, 'index': 3, 'flagged': [ids[0]],
+                                  'startedAt': 1793000000000, 'deadline': 1793007200000, 'origin': 'past', 'round': '2025-3'}}
+        login(client, 'player1')
+        assert client.put('/api/sikangi/state', json=state, headers=HEADERS).status_code == 200
+        saved = client.get('/api/sikangi/state').json()['state']
+        assert saved['exams'][0]['average'] == 75
+        assert saved['exams'][0]['passed'] is False
+        assert saved['exams'][0]['scores']['safety'] == 0
+        assert saved['exam_session']['index'] == 3
+        assert saved['qnotes'][ids[0]] == '계산 과정 메모'
+        assert client.get('/sikangi/exam-assets/' + ids[0] + '.webp').status_code == 200
+        assert client.get('/sikangi/exam-assets/p2025-3-999.webp').status_code == 404
+        invalid = {**state, 'exam_session': {**state['exam_session'], 'ids': [ids[0]] * 80}}
+        assert client.put('/api/sikangi/state', json=invalid, headers=HEADERS).status_code == 422
+        login(client, 'player2')
+        malicious = io.BytesIO()
+        with zipfile.ZipFile(malicious, 'w') as archive:
+            archive.writestr('../outside.txt', '불허 파일')
+        assert client.put('/api/sikangi/admin/content', content=malicious.getvalue(), headers=HEADERS).status_code == 422
+        assert len(client.get('/api/sikangi/bank').json()['questions']) == 81
+        assert client.get('/api/sikangi/admin/learner').json()['state']['exams'][0]['average'] == 75
+    with TestClient(create_app(tmp_path / 'game.db', ACCOUNTS, False)) as client:
+        login(client, 'player1')
+        assert client.get('/api/sikangi/bank').json()['registered'] is True
+        assert client.get('/api/sikangi/state').json()['state']['responses']['w2025-3-001'] == '직접 작성 답안'
