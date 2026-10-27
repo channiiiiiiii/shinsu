@@ -123,7 +123,7 @@ async function hydrateBank(){
  const response=await fetch('/api/sikangi/bank',{cache:'no-store'});
  if(!response.ok)throw new Error('문제은행 불러오기 실패');
  const data=await response.json();
- for(const q of data.questions){if(!questionById.has(q.id)){questions.push(q);questionById.set(q.id,q);}}
+ for(const q of data.questions){const existing=questionById.get(q.id);if(existing){Object.assign(existing,q);}else{questions.push(q);questionById.set(q.id,q);}}
 }
 async function bootstrap(){
  if(!/^\/sikangi(?:\/|$)/.test(location.pathname)){route();return;}
