@@ -107,7 +107,7 @@ async function syncServer(){
   while(pendingPayload){
    const payload=pendingPayload;pendingPayload=null;
    const body=JSON.parse(payload);body.target=body.target||null;
-   try{const response=await fetch('/api/sikangi/state',{method:'PUT',headers:{'Content-Type':'application/json','X-Shinsu-Client':'web'},body:JSON.stringify(body),keepalive:true});if(!response.ok)throw new Error('저장 실패');try{if(localStorage.getItem(KEY+'-unsynced')===payload)localStorage.removeItem(KEY+'-unsynced');}catch{}}
+   try{const response=await fetch('/api/sikangi/state',{method:'PUT',headers:{'Content-Type':'application/json','X-Shinsu-Client':'web'},body:JSON.stringify(body),keepalive:true});if(response.status===401)window.location.replace('/sikangi/login'+window.location.hash);if(!response.ok)throw new Error('저장 실패');try{if(localStorage.getItem(KEY+'-unsynced')===payload)localStorage.removeItem(KEY+'-unsynced');}catch{}}
    catch(error){if(!pendingPayload)pendingPayload=payload;throw error;}
   }
   document.querySelector('.local-badge').innerHTML='<i></i> 서버에 저장됨';
@@ -119,7 +119,7 @@ async function bootstrap(){
  main.innerHTML='<div class="empty">로그인과 학습 기록을 확인하고 있어요.</div>';
  try{
   const response=await fetch('/api/sikangi/me',{cache:'no-store'});
-  if(response.status===401){main.innerHTML='<div class="empty"><strong>먼저 기존 계정으로 로그인해 주세요.</strong><a class="button" href="/">로그인 화면으로 →</a></div>';return;}
+  if(response.status===401){window.location.replace('/sikangi/login'+window.location.hash);return;}
   if(!response.ok)throw new Error('인증 확인 실패');
   profile=await response.json();KEY=`sikan-day-v1-${profile.account}`;
   const recordResponse=await fetch('/api/sikangi/state',{cache:'no-store'});

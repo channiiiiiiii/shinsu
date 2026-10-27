@@ -6,7 +6,7 @@ from datetime import date, datetime, timezone
 from typing import Annotated
 
 from fastapi import HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, StrictBool
 
 ConceptId = Annotated[str, StringConstraints(pattern=r'^l(?:[1-9]|1[0-2])$')]
@@ -98,11 +98,28 @@ def install(app, identity, root):
     @app.get('/sikangi', include_in_schema=False)
     @app.get('/sikangi/', include_in_schema=False)
     def page(request: Request):
-        identity(request)
+        try:
+            identity(request)
+        except HTTPException as error:
+            if error.status_code != 401:
+                raise
+            return RedirectResponse('/sikangi/login', status_code=303)
         return FileResponse(root / 'sikangi' / 'index.html')
+
+    @app.get('/sikangi/login', include_in_schema=False)
+    def login_page(request: Request):
+        try:
+            identity(request)
+        except HTTPException as error:
+            if error.status_code != 401:
+                raise
+            return FileResponse(root / 'sikangi' / 'login.html')
+        return RedirectResponse('/sikangi', status_code=303)
 
     @app.get('/sikangi/{filename}', include_in_schema=False)
     def asset(filename: str, request: Request):
+        if filename in {'login.css', 'login.js'}:
+            return FileResponse(root / 'sikangi' / filename)
         identity(request)
         # 잡지식: 허용 목록을 쓰면 학습 자료 옆 서버 파일이 주소로 새는 일을 막을 수 있어요.
         if filename not in {'app.js', 'styles.css'}:

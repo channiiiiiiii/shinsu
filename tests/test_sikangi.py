@@ -27,7 +27,7 @@ def test_roles_isolation_and_admin_read_only(tmp_path):
         'daily': {'2026-10-27': 1}, 'goal': 5, 'target': None,
     }
     with TestClient(app) as client:
-        for path in ['/sikangi', '/sikangi/', '/sikangi/app.js',
+        for path in ['/sikangi/app.js',
                      '/api/sikangi/me', '/api/sikangi/state', '/api/sikangi/admin/learner']:
             assert client.get(path).status_code == 401
         login(client, 'player1')
@@ -77,3 +77,29 @@ def test_assets_validation_and_security_policy(tmp_path):
             {'session': {'ids': ['q1'], 'index': 2, 'score': 0}},
         ]:
             assert client.put('/api/sikangi/state', json=invalid, headers=HEADERS).status_code == 422
+
+
+def test_login_screen_and_return_to_study(tmp_path):
+    with TestClient(create_app(tmp_path / 'game.db', ACCOUNTS, False)) as client:
+        for path in ['/sikangi', '/sikangi/']:
+            response = client.get(path, follow_redirects=False)
+            assert response.status_code == 303
+            assert response.headers['location'] == '/sikangi/login'
+            screen = client.get(path)
+            assert screen.status_code == 200
+            assert 'id="login-form"' in screen.text
+            assert '/sikangi/login.css' in screen.text
+            assert '/sikangi/login.js' in screen.text
+        assert client.get('/sikangi/login.css').status_code == 200
+        assert client.get('/sikangi/login.js').status_code == 200
+        assert client.get('/api/sikangi/state').status_code == 401
+        assert client.post('/api/login', json={'account': 'player1', 'code': '틀린 비밀번호'}, headers=HEADERS).status_code == 401
+        assert client.get('/sikangi/login').status_code == 200
+        login(client, 'player1')
+        response = client.get('/sikangi/login', follow_redirects=False)
+        assert response.status_code == 303
+        assert response.headers['location'] == '/sikangi'
+        assert 'id="main"' in client.get('/sikangi').text
+        assert client.get('/api/sikangi/me').json()['role'] == 'learner'
+        client.post('/api/logout', headers=HEADERS)
+        assert client.get('/sikangi', follow_redirects=False).status_code == 303

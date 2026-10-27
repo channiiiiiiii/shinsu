@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#184c3d">
+  <meta name="robots" content="noindex">
+  <title>로그인 · 식안한 하루</title>
+  <link rel="stylesheet" href="/sikangi/login.css">
+  <script src="/sikangi/login.js" defer></script>
+</head>
+<body>
+  <main class="login-card">
+    <a class="brand" href="/sikangi"><span class="brand-mark">잎</span><span>식안한 하루<small>식품안전기사 학습실</small></span></a>
+    <span class="sprout" aria-hidden="true">🌿</span>
+    <p class="eyebrow">차근차근, 나만의 합격 루틴</p>
+    <h1>오늘의 공부를<br>이어가 볼까요?</h1>
+    <p class="intro">기존 계정으로 로그인하면<br>학습 기록을 이어서 볼 수 있어요.</p>
+    <form id="login-form">
+      <label for="account">누가 공부하나요?</label>
+      <select id="account" name="account" autocomplete="username"><option value="player1">여니 · 학습 사용자</option><option value="player2">차니 · 관리자</option></select>
+      <label for="code">비밀번호 또는 접속 코드</label>
+      <input id="code" name="code" type="password" autocomplete="current-password" required maxlength="256" placeholder="기존 계정의 비밀번호를 입력하세요">
+      <p id="login-error" role="alert" aria-live="polite"></p>
+      <button type="submit" id="login-submit">로그인하고 학습 시작하기 →</button>
+    </form>
+    <p class="footnote">작은 공부가 쌓이면, 합격이 자라나요.</p>
+  </main>
+</body>
+</html>
